@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Headcount — Hack for Humanity</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #F26B1D;
+      --ink: #1A1A1A;
+      --paper: #F7F3EE;
+      --smoke: #E8E2DA;
+      --muted: #5C564E;
+      --white: #FFFFFF;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #0E0D0C;
+      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .deck {
+      height: 100%;
+      width: 100%;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      padding: clamp(2rem, 5vw, 4.5rem);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(242, 107, 29, 0.18), transparent 55%),
+        radial-gradient(900px 500px at 110% 20%, rgba(242, 107, 29, 0.08), transparent 50%),
+        linear-gradient(160deg, #1F1C19 0%, #121110 45%, #0B0A09 100%);
+      color: var(--paper);
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide.active { display: flex; animation: rise 420ms ease; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide.light {
+      background:
+        radial-gradient(1000px 500px at 0% 0%, rgba(242, 107, 29, 0.12), transparent 50%),
+        linear-gradient(165deg, #FFFCF8 0%, #F3EEE7 60%, #EDE6DC 100%);
+      color: var(--ink);
+    }
+
+    .kicker {
+      font-size: 0.85rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .slide.light .kicker { color: #C2570C; }
+
+    h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
+      font-size: clamp(2.4rem, 6vw, 4.6rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      max-width: 16ch;
+    }
+
+    h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+
+    .lede {
+      margin-top: 1.25rem;
+      font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+      line-height: 1.45;
+      color: rgba(247, 243, 238, 0.82);
+      max-width: 38rem;
+    }
+
+    .slide.light .lede { color: var(--muted); }
+
+    .logo {
+      width: min(320px, 55vw);
+      margin-bottom: 1.75rem;
+    }
+
+    .meta {
+      margin-top: 2.5rem;
+      font-size: 0.95rem;
+      color: rgba(247, 243, 238, 0.55);
+    }
+
+    .team {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .team { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .person {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 1rem 1rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 100%;
+    }
+
+    .slide.light .person {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: rgba(26, 26, 26, 0.08);
+      box-shadow: 0 10px 30px rgba(26, 26, 26, 0.06);
+    }
+
+    .avatar {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #2A2622;
+      display: block;
+    }
+
+    .avatar.placeholder {
+      display: grid;
+      place-items: center;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--orange);
+      background:
+        linear-gradient(145deg, #2E2924, #1A1714);
+      border: 1px dashed rgba(242, 107, 29, 0.45);
+    }
+
+    .slide.light .avatar.placeholder {
+      background: linear-gradient(145deg, #FFF7F0, #F0E6DA);
+      border-color: rgba(194, 87, 12, 0.35);
+      color: #C2570C;
+    }
+
+    .name {
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .role {
+      font-size: 0.78rem;
+      color: var(--orange);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .slide.light .role { color: #C2570C; }
+
+    .bio {
+      font-size: 0.88rem;
+      line-height: 1.4;
+      color: rgba(247, 243, 238, 0.72);
+    }
+
+    .slide.light .bio { color: var(--muted); }
+
+    .story {
+      max-width: 42rem;
+    }
+
+    .story p {
+      font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+      line-height: 1.55;
+      margin-bottom: 1rem;
+      color: rgba(247, 243, 238, 0.9);
+    }
+
+    .slide.light .story p { color: #2F2A25; }
+
+    .story .beat {
+      color: var(--orange);
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.85rem;
+    }
+
+    .slide.light .story .beat { color: #C2570C; }
+
+    .quote {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.5rem, 3.5vw, 2.4rem);
+      line-height: 1.3;
+      max-width: 20ch;
+      margin: 0.5rem 0 1.25rem;
+    }
+
+    .rule {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0.65rem 1rem;
+      border-left: 3px solid var(--orange);
+      background: rgba(242, 107, 29, 0.1);
+      font-weight: 500;
+      font-size: 1rem;
+    }
+
+    .nav {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 20;
+      align-items: center;
+    }
+
+    .nav button {
+      border: 0;
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--paper);
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .nav button:hover { background: var(--orange); color: white; }
+
+    .progress {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      height: 3px;
+      background: var(--orange);
+      width: 0%;
+      z-index: 30;
+      transition: width 200ms ease;
+    }
+
+    .dots {
+      color: rgba(247, 243, 238, 0.55);
+      font-size: 0.85rem;
+      min-width: 3.5rem;
+      text-align: center;
+    }
+
+    .hint {
+      position: fixed;
+      left: 1.25rem;
+      bottom: 1.35rem;
+      font-size: 0.75rem;
+      color: rgba(247, 243, 238, 0.35);
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+    <!-- 1. Intro -->
+    <section class="slide active" data-title="Intro">
+      <img class="logo" src="logo-reversed.svg" alt="Headcount" />
+      <p class="kicker">AIC at UC San Diego · Hack for Humanity · Nov 2026</p>
+      <h1>When the alert goes out, who is still inside?</h1>
+      <p class="lede">
+        Headcount phones every older adult in the zone — in English or Spanish —
+        until each one is accounted for.
+      </p>
+      <p class="meta">A short story from the Headcount team</p>
+    </section>
+
+    <!-- 2. Team -->
+    <section class="slide light" data-title="Team">
+      <p class="kicker">The team</p>
+      <h2>Four builders. One loop closed.</h2>
+      <div class="team">
+        <article class="person">
+          <img class="avatar" src="photos/laksh.jpg" alt="Laksh Goyal" />
+          <div>
+            <div class="name">Laksh Goyal</div>
+            <div class="role">CS @ UCSD · Systems &amp; ML</div>
+          </div>
+          <p class="bio">Builds ML systems and agentic backends end to end. SWE internships across infra and applied AI; 11× hackathon winner.</p>
+        </article>
+        <article class="person">
+          <img class="avatar" src="photos/dat.jpg" alt="Dat Nguyen" />
+          <div>
+            <div class="name">Dat Nguyen</div>
+            <div class="role">DS + Econ @ UCSD · SWE</div>
+          </div>
+          <p class="bio">Software engineer at Netra (drone detection for public safety). Full-stack and backend builder; 11× hackathon winner.</p>
+        </article>
+        <article class="person">
+          <img class="avatar" src="photos/alex.jpg" alt="Alexander Woods" />
+          <div>
+            <div class="name">Alexander Woods</div>
+            <div class="role">CogSci + Math @ UCSD</div>
+          </div>
+          <p class="bio">Undergrad researcher in brain–computer interfaces and psychiatry data. Building BCIs that help people move and speak.</p>
+        </article>
+        <article class="person">
+          <img class="avatar" src="photos/dhruv.jpg" alt="Dhruv Sehgal" />
+          <div>
+            <div class="name">Dhruv Sehgal</div>
+            <div class="role">Data Science @ UCSD</div>
+          </div>
+          <p class="bio">Computer vision tutor and Scripps researcher. Uses ML to read the ocean from the surface when Argo floats cannot.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3. Story: the siren -->
+    <section class="slide" data-title="Story 1">
+      <div class="story">
+        <p class="beat">The story · 1 of 3</p>
+        <h2>The siren does not ask if you heard it.</h2>
+        <p>
+          An evacuation order hits the phones. Walter is 87, bedridden, alone.
+          María answers in Spanish: no car, on oxygen. George is deaf — a call
+          he cannot use. The alert already went out. Nobody knows who got out.
+        </p>
+      </div>
+    </section>
+
+    <!-- 4. Story: the gap -->
+    <section class="slide light" data-title="Story 2">
+      <div class="story">
+        <p class="beat">The story · 2 of 3</p>
+        <h2>Responders knock on empty doors.</h2>
+        <p>
+          The people who already left still get welfare checks. The people who
+          cannot leave wait. Apps do not reach landlines. Broadcast alerts
+          never close the loop.
+        </p>
+        <p class="quote">So we built the loop.</p>
+      </div>
+    </section>
+
+    <!-- 5. Story: Headcount -->
+    <section class="slide" data-title="Story 3">
+      <div class="story">
+        <p class="beat">The story · 3 of 3</p>
+        <h2>Headcount calls until everyone is counted.</h2>
+        <p>
+          A real phone call — or a text if they are deaf or hard of hearing.
+          Speak freely, or press 1, 2, or 3. Missed? Try again. Three misses?
+          A person goes to the door. Family gets a text the moment their person
+          is safe.
+        </p>
+        <p class="rule">Gemini understands. Plain, tested code decides.</p>
+      </div>
+    </section>
+
+    <!-- 6. Close -->
+    <section class="slide light" data-title="Close">
+      <img class="logo" src="logo.svg" alt="Headcount" style="width: min(280px, 50vw);" />
+      <h2>Every person counted.<br />Every person home.</h2>
+      <p class="lede" style="color: var(--muted);">
+        Built at Hack for Humanity — Laksh, Dat, Alex, and Dhruv.
+      </p>
+      <p class="meta" style="color: var(--muted); margin-top: 2rem;">
+        Not an official alert system. In an emergency, call 911.
+      </p>
+    </section>
+  </div>
+
+  <div class="progress" id="progress"></div>
+  <p class="hint">← → or click · F for fullscreen</p>
+  <div class="nav">
+    <span class="dots" id="dots">1 / 6</span>
+    <button type="button" id="prev" aria-label="Previous">←</button>
+    <button type="button" id="next" aria-label="Next">→</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    let i = 0;
+
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+      document.getElementById("dots").textContent = `${i + 1} / ${slides.length}`;
+      document.getElementById("progress").style.width =
+        `${((i + 1) / slides.length) * 100}%`;
+    }
+
+    document.getElementById("prev").onclick = () => show(i - 1);
+    document.getElementById("next").onclick = () => show(i + 1);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault(); show(i + 1);
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault(); show(i - 1);
+      } else if (e.key === "f" || e.key === "F") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      } else if (e.key === "Home") show(0);
+      else if (e.key === "End") show(slides.length - 1);
+    });
+
+    // Tap right half / left half on mobile
+    document.getElementById("deck").addEventListener("click", (e) => {
+      if (e.target.closest(".nav") || e.target.closest("a")) return;
+      const mid = window.innerWidth / 2;
+      show(e.clientX >= mid ? i + 1 : i - 1);
+    });
+
+    show(0);
+  </script>
+</body>
+</html>
