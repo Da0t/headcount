@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Preflight: is this laptop ready to demo Headcount?
 
-    python scripts/preflight.py
+    python scripts/preflight.py          # free: no Gemini call
+    python scripts/preflight.py --live   # also makes ONE Gemini call (uses quota)
 
 - Reports which settings are set (never prints their values).
-- Makes ONE Gemini call (classify_text("we are out")) and reports latency.
+- With --live only: makes ONE Gemini call (classify_text("we are out")) and reports latency.
 - Checks that Twilio credentials authenticate, read-only. It never places a call or sends a text.
-- Exits 1 if Gemini is not working, 0 otherwise. Twilio problems are warnings: the demo runs simulated.
+- Exits 1 if there is no Gemini key, or (with --live) the Gemini call fails; 0 otherwise. Twilio problems are warnings: the demo runs simulated.
 """
 from __future__ import annotations
 
@@ -64,11 +65,14 @@ def check_settings(s) -> None:
         line(OK, f"{s.phones_file} not present: every resident is simulated")
 
 
-def check_gemini(s) -> bool:
+def check_gemini(s, live: bool) -> bool:
     print("\nGemini:")
     if not s.gemini_ready:
         line(FAIL, "GEMINI_API_KEY not set. Speech would fall back to keywords.")
         return False
+    if not live:
+        line(OK, f"key set, model {s.gemini_model}. Live call skipped (run with --live to spend one request).")
+        return True
     t0 = time.perf_counter()
     reading = asyncio.run(classify_text("we are out", s.gemini_model, s.gemini_timeout, api_key=s.gemini_api_key))
     ms = (time.perf_counter() - t0) * 1000
@@ -132,10 +136,15 @@ def check_twilio(s) -> None:
          "OFF (needs account SID, creds, a valid from number, PUBLIC_BASE_URL)"))
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Check that Headcount is ready to demo.")
+    ap.add_argument("--live", action="store_true", help="make ONE real Gemini call (uses free-tier quota)")
+    args = ap.parse_args(argv)
     s = load_settings()
     check_settings(s)
-    gemini_ok = check_gemini(s)
+    gemini_ok = check_gemini(s, args.live)
     check_twilio(s)
     print("\nResult:", "READY" if gemini_ok else "NOT READY (Gemini)")
     return 0 if gemini_ok else 1
