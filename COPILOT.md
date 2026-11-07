@@ -42,6 +42,10 @@ How to add an entry:
 
 ## What we learned about working with Copilot
 
-*Fill in at the end: where it saved time, where we had to correct it, and how we checked its output. (Our rule: Gemini and Copilot can help, but plain, tested code decides who gets help.)*
+*Our rule: Gemini and Copilot can help, but plain, tested code decides who gets help.*
 
--
+- **Where it saved time:** finding problems we weren't looking for. Its extra classifier tests caught a real bug (negated injuries like "No me caí" read as medical emergencies), and its engine review found three real issues: attempt numbers reused after a reset, a family text finishing after a reset, and autopilot not stopping when switched off. Each was fixed by the team with a regression test.
+- **How we kept it safe:** we ran Copilot CLI with file edits and git allowed but no other shell commands, and gave each task a list of the files it may touch. Copilot commits only its own work, with its own co-author trailer.
+- **How we checked its output:** it couldn't run the tests itself, so we ran `pytest` after every Copilot change before pushing, and read its diffs. Its review findings were confirmed against the code before we fixed them.
+- **Where we had to correct it:** we told it to use punctuation that matches our style guide, and once it stashed a teammate's uncommitted files during a pull (it restored them correctly, but we now pull with `--autostash`). We also entered wrong times for its first log rows and had it correct them from the commit history.
+- **What we'd do differently:** bring it in earlier. We started using it after the core was built, and its review found bugs that would have been cheaper to catch on day one.
