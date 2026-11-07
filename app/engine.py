@@ -113,6 +113,25 @@ class Engine:
         self.events = []
         self.started_at = None
 
+    async def call_one(self, rid: int) -> bool:
+        """Demo helper: (re)start calls for ONE resident without running the whole campaign.
+
+        Used to show a single real Twilio call on stage (saves trial credit). Returns False for an unknown rid.
+        """
+        r = self.residents.get(rid)
+        if r is None:
+            return False
+        for kind in ("dial", "ring", "auto"):
+            self._cancel(rid, kind)
+        r.reset_runtime()
+        if self.started_at is None:
+            self.started_at = time.time()
+        how = "text check-in" if r.contact_mode == "text" else "call"
+        where = "real phone" if (self.twilio is not None and r.phone) else "simulated"
+        self.log(r, f"Demo: single {how} requested ({where}).", "start")
+        self._schedule(rid, "dial", 0, self._dial, rid)
+        return True
+
     async def start(self) -> None:
         self.reset()
         self.started_at = time.time()
