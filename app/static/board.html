@@ -420,6 +420,13 @@ body.fs .map-card { height: calc(100vh - 236px); }
 .mk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mk.base { background: var(--red); border-color: var(--red); color: #fff; }
 .mk-label { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--text-2); background: rgba(255, 255, 255, .85); padding: 0 4px; border-radius: 4px; }
+.inbound-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  color: #fff; background: var(--red); border-radius: 999px; padding: 2px 9px; }
+.inbound-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1s ease-in-out infinite; }
+.dispatch-cap { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); z-index: 3; background: #2b2d33; color: #fff; font-size: 11px; font-weight: 600;
+  letter-spacing: .04em; padding: 4px 10px; border-radius: 999px; white-space: nowrap; box-shadow: var(--shadow); }
+.fb-inbound { fill: none; stroke: var(--red); stroke-width: 3; animation: ring 1.1s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .map-btn { position: absolute; right: 48px; top: 8px; z-index: 3; height: 29px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-2);
   background: #fff; font-weight: 600; font-size: 12px; color: var(--text-2); cursor: pointer; box-shadow: var(--shadow); }
 .map-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
@@ -557,6 +564,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       </div>
       <section class="map-card" aria-label="Zone map">
         <div class="map-title">Zone map</div>
+        <div class="dispatch-cap" id="dispatchCap" hidden>SIMULATED DISPATCH, no real responders contacted</div>
         <button class="map-btn" id="map3d" type="button" aria-pressed="true" hidden title="Switch between a 3D and a flat map">3D</button>
         <div class="map" id="map"><div class="map-empty">Loading map…</div></div>
       </section>
@@ -569,7 +577,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-name" hidden>
   <div class="dr-head">
     <div class="avatar" id="dr-avatar" aria-hidden="true"></div>
-    <div class="dr-id"><h2 id="dr-name"></h2><div class="sub" id="dr-sub"></div></div>
+    <div class="dr-id"><h2><span id="dr-name"></span><span class="inbound-badge" id="dr-inbound" hidden>INBOUND CALL</span></h2><div class="sub" id="dr-sub"></div></div>
     <button class="icon-btn" id="dr-close" type="button" aria-label="Close resident profile"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <dl class="dr-meta" id="dr-meta"></dl>
@@ -659,6 +667,9 @@ body.fs .map-card { height: calc(100vh - 236px); }
 
   // ------------------------------------------------------------------ state
   let last = null, health = null, offline = false, lastOkAt = null;
+  const inboundIds = new Set();            // residents who called US (an "Incoming call from" alert)
+  const seenInbound = new Set();
+  const pageStart = Date.now() / 1000 - 5;  // ignore inbound alerts older than this page
   let tab = "all", query = "";
   const prevStatus = new Map(), flashUntil = new Map(), openRows = new Set();
   let history = [], historyStart = null;   // KPI samples for sparklines and deltas
@@ -921,6 +932,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       const html = rowHtml(r, rank, st.max_attempts);
       if (tr._html !== html) { tr.innerHTML = html; tr._html = html; }
       tr.classList.toggle("welfare-row", r.status === "WELFARE_CHECK");
+      tr.classList.toggle("inbound-row", inboundIds.has(r.id) && r.status !== "WELFARE_CHECK");
       const until = flashUntil.get(r.id);
       if (until && Date.now() < until) tr.classList.add("flash");
       else { tr.classList.remove("flash"); flashUntil.delete(r.id); }
@@ -979,8 +991,32 @@ body.fs .map-card { height: calc(100vh - 236px); }
     feedNewest = newestKey;
   }
 
+  function detectInbound(st) {
+    const evs = st.events || [];
+    if (!evs.length) { inboundIds.clear(); return; }
+    for (const e of evs) {
+      if (e.kind !== "alert" || !/^Incoming call from/i.test(e.msg || "") || e.rid == null) continue;
+      inboundIds.add(e.rid);
+      const k = e.t + "|" + e.rid;
+      if (seenInbound.has(k)) continue;
+      seenInbound.add(k);
+      if (e.t >= pageStart) onInbound(e.rid, st);
+    }
+  }
+  function onInbound(rid, st) {
+    if (typeof openDrawer === "function") openDrawer(rid, null);
+    drawerTab = "activity";
+    document.querySelectorAll("[data-dtab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.dtab === "activity" ? "true" : "false"));
+    const r = (st.residents || []).find((x) => x.id === rid);
+    if (r && mb && mbReady && xyOf(r)) {
+      if (!is3d) set3d(true, false);
+      mb.flyTo({ center: xyOf(r), zoom: 15.2, pitch: 55, bearing: -20, duration: reduceMotion ? 0 : 2200, essential: true });
+    }
+    notice("Inbound call from " + (r ? r.name : "a caller") + ". Opening their profile.");
+  }
   function render(st) {
     last = st;
+    detectInbound(st);
     renderHeader(st);
     renderKpis(st);
     renderBanners(st);
@@ -1112,6 +1148,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
     av.textContent = initials(r.name);
     av.style.setProperty("--av", AV_COLOR[r.status] || "var(--gray)");
     $("dr-name").textContent = r.name;
+    $("dr-inbound").hidden = !inboundIds.has(r.id);
     $("dr-sub").innerHTML = esc(r.age) + " · " + '<span class="pill st-' + esc(r.status) + '"><span class="d"></span>' + esc(LABEL[r.status] || r.status) + "</span>";
     const meta = [
       ["Address", esc(r.address)],
@@ -1196,10 +1233,22 @@ body.fs .map-card { height: calc(100vh - 236px); }
     }
     return [-1, false, r.attempts ? "" : "Not called yet. Press Call now to call just this resident.", false];
   }
+  const INBOUND_STEPS = ["Incoming", "Are you safe?", "Who's with you", "Location", "Understood", "Responder routed"];
+  function inboundStepOf(r, d, st) {
+    const evs = (d && d.events) || (st.events || []).filter((e) => e.rid === r.id);
+    let n = 0;
+    evs.forEach((e) => { const m = /inbound step\s*(\d+)/i.exec(e.msg || ""); if (m) n = Math.max(n, Number(m[1])); });
+    if (HELP_STATUSES.has(r.status) && r.status !== "WELFARE_CHECK") return [5, true, "Responder routed (simulated dispatch).", false];
+    if (FINAL.has(r.status)) return [4, true, "Understood: " + (LABEL[r.status] || r.status) + ".", false];
+    if (r.status === "WELFARE_CHECK" || r.status === "RETRY_WAIT") return [Math.min(3, n), false, "The call ended before we understood. Calling back.", true];
+    const k = Math.min(3, Math.max(0, n));
+    return [k, false, ["Incoming call. Headcount answered.", "Asking: are you safe?", "Asking: who is with you?", "Asking: where are you?"][k], false];
+  }
   function renderLive(r, st) {
     const d = detail && detail.id === r.id ? detail : null;
-    const [i, done, msg, bad] = stepOf(r, d);
-    const html = STEPS.map((name, k) => {
+    const inbound = inboundIds.has(r.id);
+    const [i, done, msg, bad] = inbound ? inboundStepOf(r, d, st) : stepOf(r, d);
+    const html = (inbound ? INBOUND_STEPS : STEPS).map((name, k) => {
       let cls = "";
       if (k < i || (k === i && done)) cls = "done";
       else if (k === i) cls = bad ? "bad" : "now";
@@ -1267,6 +1316,8 @@ body.fs .map-card { height: calc(100vh - 236px); }
       STAYING: cssVar("--gray"), OUT: cssVar("--green"), CALLING: cssVar("--blue"), IN_CALL: cssVar("--blue") })[s] || "#a3a6ad";
   }
   const hasXY = (r) => typeof r.lng === "number" && typeof r.lat === "number" && (r.lng || r.lat);
+  // a new caller may arrive with no coordinates: put them at the zone center until we know more
+  const xyOf = (r) => (hasXY(r) ? [r.lng, r.lat] : (mapCfg && mapCfg.center ? mapCfg.center : null));
   function shelterXY(r) {
     const a = r.assist;
     if (!a || !a.shelter) return null;
@@ -1275,15 +1326,17 @@ body.fs .map-card { height: calc(100vh - 236px); }
     return s ? [s.lng, s.lat] : null;
   }
   function geo(st) {
-    const rows = ((st && st.residents) || []).filter(hasXY);
+    const rows = ((st && st.residents) || []).filter((r) => xyOf(r));
     const base = mapCfg && mapCfg.base ? [mapCfg.base.lng, mapCfg.base.lat] : null;
-    const pins = rows.map((r) => ({ id: r.id, name: r.name, status: r.status, xy: [r.lng, r.lat], color: statusColor(r.status),
-      calling: r.status === "CALLING" || r.status === "IN_CALL", out: r.status === "OUT" }));
+    const pins = rows.map((r) => ({ id: r.id, name: r.name, status: r.status, xy: xyOf(r), color: statusColor(r.status),
+      calling: r.status === "CALLING" || r.status === "IN_CALL", out: r.status === "OUT", inbound: inboundIds.has(r.id) }));
     const routes = [], legs = [];
     rows.filter((r) => HELP_STATUSES.has(r.status)).forEach((r) => {
-      const color = statusColor(r.status), sh = shelterXY(r);
-      if (base) { routes.push({ a: base, b: [r.lng, r.lat], color, kind: "pickup" }); legs.push({ a: base, b: [r.lng, r.lat], seed: r.id }); }
-      if (sh) routes.push({ a: [r.lng, r.lat], b: sh, color, kind: "shelter" });
+      const color = statusColor(r.status), sh = shelterXY(r), xy = xyOf(r);
+      if (base) routes.push({ a: base, b: xy, color, kind: "pickup" });
+      if (sh) routes.push({ a: xy, b: sh, color, kind: "shelter" });
+      // a welfare check sends a person to the door; rides and medical continue on to the shelter
+      if (base) legs.push({ path: sh && r.status !== "WELFARE_CHECK" ? [base, xy, sh] : [base, xy], seed: r.id, inbound: inboundIds.has(r.id) });
     });
     return { pins, routes, legs, base };
   }
@@ -1338,6 +1391,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       ["routes", "pins", "vehicles"].forEach((id) => mb.addSource(id, { type: "geojson", data: empty }));
       mb.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": ["get", "color"], "line-width": 2.5, "line-opacity": 0.75, "line-dasharray": [1.5, 1.5] } });
       mb.addLayer({ id: "pulse", type: "circle", source: "pins", filter: ["==", ["get", "calling"], 1], paint: { "circle-radius": 10, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": cssVar("--blue"), "circle-stroke-width": 2, "circle-stroke-opacity": 0.8 } });
+      mb.addLayer({ id: "inbound-ring", type: "circle", source: "pins", filter: ["==", ["get", "inbound"], 1], paint: { "circle-radius": 14, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": cssVar("--red"), "circle-stroke-width": 3, "circle-stroke-opacity": 0.9 } });
       mb.addLayer({ id: "pins", type: "circle", source: "pins", paint: { "circle-radius": 7.5, "circle-color": ["get", "color"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
       mb.addLayer({ id: "checks", type: "symbol", source: "pins", filter: ["==", ["get", "out"], 1], layout: { "text-field": "✓", "text-size": 11, "text-allow-overlap": true, "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"] }, paint: { "text-color": "#fff" } });
       mb.addLayer({ id: "vehicles", type: "circle", source: "vehicles", paint: { "circle-radius": 5, "circle-color": "#1c1d21", "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
@@ -1402,26 +1456,45 @@ body.fs .map-card { height: calc(100vh - 236px); }
     mb.easeTo({ center: cam.center, zoom: cam.zoom + (is3d ? 0.6 : 0), pitch: is3d ? 55 : 0, bearing: is3d ? -20 : 0, duration: animate ? 700 : 0 });
   }
   const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
-  function vehiclePos(leg, t) { return lerp(leg.a, leg.b, reduceMotion ? 1 : ((t / 6000) + (leg.seed % 7) / 7) % 1); }
+  function vehiclePos(leg, t) {
+    const path = leg.path || [leg.a, leg.b];
+    const n = path.length - 1;
+    // inbound callers start at the fire base once (no random phase), others loop with an offset
+    let p = reduceMotion ? 1 : leg.inbound ? Math.min(1, ((t - (leg.t0 || t)) / 9000)) : ((t / (4500 * n)) + (leg.seed % 7) / 7) % 1;
+    const seg = Math.min(n - 1, Math.floor(p * n));
+    return lerp(path[seg], path[seg + 1], p * n - seg);
+  }
   let lastVeh = 0;
   function animateMap(t) {
     if (!mb || !mbReady) return;
     const phase = (t % 1400) / 1400;
     mb.setPaintProperty("pulse", "circle-radius", 8 + 12 * phase);
     mb.setPaintProperty("pulse", "circle-stroke-opacity", 0.9 * (1 - phase));
+    const ph2 = (t % 1100) / 1100;
+    mb.setPaintProperty("inbound-ring", "circle-radius", 10 + 18 * ph2);
+    mb.setPaintProperty("inbound-ring", "circle-stroke-opacity", 1 - ph2);
     if (t - lastVeh > 60) {
       lastVeh = t;
       mb.getSource("vehicles").setData({ type: "FeatureCollection", features: mapState.legs.map((l) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: vehiclePos(l, t) } })) });
     }
     requestAnimationFrame(animateMap);
   }
+  const legStart = new Map();
+  function stampLegs(g) {
+    const now = performance.now();
+    g.legs.forEach((l) => { if (!legStart.has(l.seed)) legStart.set(l.seed, now); l.t0 = legStart.get(l.seed); });
+    [...legStart.keys()].forEach((k) => { if (!g.legs.some((l) => l.seed === k)) legStart.delete(k); });
+    $("dispatchCap").hidden = !g.legs.length;
+  }
   function updateMap(st) {
+    if (mapCfg) stampLegs(geo(st));
     if (mapMode === "svg") { renderSvgMap(st); return; }
     if (mapMode !== "mapbox" || !mbReady) return;
     const g = geo(st);
+    stampLegs(g);
     mapState = g;
     mb.getSource("pins").setData({ type: "FeatureCollection", features: g.pins.map((p) => ({ type: "Feature",
-      properties: { id: p.id, color: p.color, calling: p.calling ? 1 : 0, out: p.out ? 1 : 0 }, geometry: { type: "Point", coordinates: p.xy } })) });
+      properties: { id: p.id, color: p.color, calling: p.calling ? 1 : 0, out: p.out ? 1 : 0, inbound: p.inbound ? 1 : 0 }, geometry: { type: "Point", coordinates: p.xy } })) });
     mb.getSource("routes").setData({ type: "FeatureCollection", features: g.routes.map((r) => ({ type: "Feature", properties: { color: r.color },
       geometry: { type: "LineString", coordinates: [r.a, r.b] } })) });
     if (reduceMotion) mb.getSource("vehicles").setData({ type: "FeatureCollection", features: g.legs.map((l) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: l.b } })) });
@@ -1431,6 +1504,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
   function renderSvgMap(st) {
     if (!mapCfg || !st) return;
     const g = geo(st);
+    stampLegs(g);
     const ring = (mapCfg.zone && mapCfg.zone.coordinates && mapCfg.zone.coordinates[0]) || [];
     const all = ring.concat(g.pins.map((p) => p.xy), (mapCfg.shelters || []).map((s) => [s.lng, s.lat]), g.base ? [g.base] : []);
     if (!all.length) return;
@@ -1462,6 +1536,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
     g.pins.forEach((p) => {
       const [x, y] = P(p.xy);
       if (p.calling && !reduceMotion) h += '<circle class="fb-pulse" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="13"/>';
+      if (p.inbound) h += '<circle class="fb-inbound" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="16"/>';
       h += '<circle class="fb-pin" data-id="' + p.id + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="11" fill="' + p.color + '"><title>' + esc(p.name + " · " + (LABEL[p.status] || p.status)) + "</title></circle>";
       if (p.out) h += '<text x="' + x.toFixed(1) + '" y="' + (y + 5).toFixed(1) + '" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">✓</text>';
     });
