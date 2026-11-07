@@ -12,12 +12,13 @@ How to add an entry:
 
 | Time (PT) | File / task | What we asked Copilot | What it did | What we kept or changed |
 |---|---|---|---|---|
-| | | | | |
+| 13:35 PT | `app/engine.py`, stale Twilio callbacks | Explain how a late webhook from an old call is prevented from overwriting a newer answer. | Traced the per-call attempt token and the guards on call-state updates. | Added the explanation under Learn; no application code changed. |
+| 13:45 PT | `tests/test_classify_extra.py` | Add non-duplicate keyword classification and extraction cases, including difficult English and Spanish wording. | Added phrase, negation, mixed-signal, curly-apostrophe, uppercase, and extraction tests; marked negated English and Spanish injury cases xfail because they currently classify as medical. | Kept the regression cases as xfail and omitted cases already covered in `tests/test_classify.py`. |
 
 ## Learn
 *Where Copilot helped us understand something new: an API, a library, an unfamiliar error.*
 
--
+- `_dial` increments and captures the call attempt (`app/engine.py:122, 126–127`); `no_answer` (`164–167`), `answered` (`181–184`), and `respond` (`193–199`) reject events whose attempt is not current or whose call is no longer live. Thus late status, voice, or gather callbacks cannot change a newer call's state or answer. `_dial` also saves the returned Twilio SID only if that attempt is still current and live (`140–144`). The Twilio handlers pass the attempt through at `app/main.py:189–200, 238–242`.
 
 ## Solve
 *Where Copilot helped write or fix code. Link the file and say what part was Copilot's.*
@@ -27,7 +28,7 @@ How to add an entry:
 ## Test
 *Where Copilot helped write or extend tests, or found an edge case we missed.*
 
--
+- Added `tests/test_classify_extra.py` for tricky English and Spanish wording, negations, mixed signals, curly apostrophes, uppercase input, and companion, pet, and medical-equipment extraction. Known false medical matches for negated English and Spanish injuries are kept as xfails; existing cases were not repeated.
 
 ## Document
 *Where Copilot helped write docs, docstrings, comments, or this README.*
