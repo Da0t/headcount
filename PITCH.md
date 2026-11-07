@@ -26,6 +26,10 @@ She said it in her own words. The row flips to **needs a ride**, with "uses oxyg
 
 Her daughter Ana just got a text: her mom answered, needs a ride, and a responder has been told.
 
+*Point at George's row.*
+
+George is hard of hearing, so he never gets a call. He gets a text and replies 1.
+
 *Point at Walter's row.*
 
 Walter never answers. Headcount doesn't guess. After three calls, the board says **send a person**, with his address.

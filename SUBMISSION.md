@@ -13,6 +13,7 @@ Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop o
 ## What it does
 
 - **Calls every resident in the zone**, staggered, with a real phone call through Twilio, or a built-in phone simulator when Twilio is off.
+- **Text check-in for deaf and hard-of-hearing residents.** Instead of a call, they get a text asking them to reply 1, 2, 3, or in their own words, in English or Spanish. Replies go through the same understanding and the same rules, including three tries and then a welfare check. In the demo, George (hard of hearing) is checked in by text and replies "1".
 - **Understands the answer** in their own words, in English or Spanish ("No tengo carro y uso oxígeno"), or from the keypad (1 = I'm out, 2 = I need a ride, 3 = I need medical help).
 - **Never guesses.** A missed call is retried. After three missed calls, the resident is flagged for a **welfare check** and a person is sent to the door. Two unclear answers mean a human calls them back.
 - **Live dispatch board** for responders, ranked by a priority score that shows its reasons (for example "age 87, bedridden, lives alone"), with one English line a responder can act on, such as "No car, uses oxygen. Needs a ride."

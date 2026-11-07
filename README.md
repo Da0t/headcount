@@ -11,6 +11,7 @@ Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and n
 ## What it does
 
 - **Calls every resident** in the zone, staggered, with a real phone call.
+- **Texts instead of calling** for deaf and hard-of-hearing residents (`contact_mode: "text"`): a check-in text asks them to reply 1 (I'm out), 2 (I need a ride), 3 (I need medical help), or in their own words, in English or Spanish. A reply is read the same way as a spoken answer, and an unanswered text gets the same three tries and welfare check as an unanswered call.
 - **Understands the answer** in English or Spanish, in their own words ("mi esposo no puede caminar") or with the keypad: 1 = I'm out, 2 = I need a ride, 3 = I need medical help.
 - **Retries three times.** If it still can't reach someone, it never guesses: it flags a **welfare check** and sends a person to the door. If someone answers but can't be understood twice, a human calls them back.
 - **Live dispatch board** for responders, ranked by priority (age, oxygen, mobility, bedridden, lives alone), with one English line a responder can act on.
@@ -163,7 +164,7 @@ python3 -c "import mcp_server as m; print(m.evacuation_status())"
 | Frank Russo, 84 | wife in a wheelchair, can't drive, has a dog | NEEDS_RIDE |
 | James Whitaker, 79 (hard of hearing) | declines, then "I'm not leaving. I've got four horses here." | STAYING |
 | Rosa Medina, 90 (Spanish) | "Me caí en la cocina y no me puedo levantar." | NEEDS_MEDICAL |
-| George Patel, 72 | presses 1 | OUT |
+| George Patel, 72 (hard of hearing, text check-in) | gets a text instead of a call, replies "1" | OUT |
 | Betty Lawson, 85 | "Who is this?", then "I already left. I'm at the shelter." | OUT |
 | Luis Herrera, 68 (Spanish) | misses the first call, then "Ya salimos todos, estamos bien." | OUT |
 | Edna Morales, 93 (oxygen, bedridden) | misses the first call, then "I can't get out of bed by myself." | NEEDS_RIDE |
