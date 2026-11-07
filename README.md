@@ -297,7 +297,7 @@ tests/               engine, classifier, and webhook tests
 
 ## How we built it
 
-Four teammates worked in parallel from shared briefs with one interface contract: [Engine + Gemini](docs/briefs/AGENT_1_ENGINE_GEMINI.md), [Twilio + API server](docs/briefs/AGENT_2_TWILIO_API.md), [Frontend](docs/briefs/AGENT_3_FRONTEND.md), and [VoiceOS + docs + pitch](docs/briefs/AGENT_4_VOICEOS_DOCS.md). The pitch is in [PITCH.md](PITCH.md).
+Four teammates worked in parallel from shared briefs with one interface contract: [Engine + Gemini](docs/briefs/AGENT_1_ENGINE_GEMINI.md), [Twilio + API server](docs/briefs/AGENT_2_TWILIO_API.md), [Frontend](docs/briefs/AGENT_3_FRONTEND.md), and [VoiceOS + docs + pitch](docs/briefs/AGENT_4_VOICEOS_DOCS.md).
 
 ## License
 
