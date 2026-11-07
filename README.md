@@ -35,7 +35,7 @@ PENDING ─► CALLING ─► IN_CALL ─► OUT | NEEDS_RIDE | NEEDS_MEDICAL | 
                                 after 3 calls ─► WELFARE_CHECK  (a person goes to the door)
 ```
 
-**Understanding speech** (`app/classify.py`): Gemini returns a structured `CallReading` (answer, people with them, mobility, medical equipment, pets, where they are, their words, and a one-line responder note). The call never waits on AI: Gemini has a timeout, and on any error or timeout the classifier falls back to English and Spanish keywords. Keypad 1/2/3 skips classification entirely. The board shows which engine read each answer: `Gemini (model)`, `keywords (...)` with the reason, or `keypad`.
+**Understanding speech** (`app/classify.py`): Gemini returns a structured `CallReading` (answer, people with them, mobility, medical equipment, pets, where they are, their words, and a one-line responder note). The call never waits on AI: Gemini has a timeout, and on any error or timeout the classifier falls back to English and Spanish keywords. Keypad 1/2/3 skips classification entirely. Using oxygen or other equipment is not by itself a medical emergency: it is recorded (in English, so "oxígeno" shows as "oxygen") and raises priority, but the answer stays what they said. The board shows which engine read each answer: `Gemini (model)`, `keywords (...)` with the reason, or `keypad`.
 
 **Priority** (`app/priority.py`) is plain arithmetic that the board shows next to every resident:
 
@@ -175,7 +175,7 @@ Everything lives in `.env` (see [`.env.example`](.env.example) for every variabl
 
 For a faster stage demo, try `HEADCOUNT_STAGGER=1 HEADCOUNT_RING_TIMEOUT=8 HEADCOUNT_RETRY_GAP=4`.
 
-Free-tier Gemini keys can return rate-limit errors (429) when many calls land at once. The call doesn't fail: that answer falls back to keywords, and the board shows `keywords` with the reason.
+Free-tier Gemini keys can return rate-limit errors (429) when many calls land at once, so Headcount sends at most 3 Gemini requests at a time. If a 429 still happens, the call doesn't fail: that answer falls back to keywords, and the board shows `keywords` with the reason.
 
 ## Tests
 
@@ -183,7 +183,7 @@ Free-tier Gemini keys can return rate-limit errors (429) when many calls land at
 pytest -q
 ```
 
-61 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
+62 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
 
 ## Project layout
 

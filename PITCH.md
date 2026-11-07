@@ -14,7 +14,7 @@ Alerts only go one way. Responders spend hours knocking on the doors of people w
 
 **0:40 · Live demo**
 
-*Press **Start** on the board. Teammates' phones ring in the room.*
+*Press **Start** on the board. With Twilio on, teammates' phones ring in the room. With Twilio off (the current setup), a teammate answers Maria's call on the phone simulator at `/phone`.*
 
 Every resident gets a call, in their language.
 
@@ -22,7 +22,7 @@ Every resident gets a call, in their language.
 
 She said it in her own words. The row flips to **needs a ride**, with "uses oxygen" for the driver.
 
-*The family text lands on another teammate's phone. Hold it up.*
+*With Twilio on, the family text lands on another teammate's phone: hold it up. With Twilio off, point at Maria's row, which reads "Texted Ana (daughter) (simulated)".*
 
 Her daughter Ana just got a text: her mom answered, needs a ride, and a responder has been told.
 
@@ -36,13 +36,24 @@ A responder in a truck can ask that without touching a screen.
 
 **1:35 · The rule**
 
-Gemini understands messy speech in two languages. Plain, tested rules decide who gets help, so every call can be explained.
+Gemini understands messy speech in two languages, in about a second. Plain, tested rules decide who gets help, so every call can be explained.
 
 **1:50 · Close**
 
-*Point at the green banner.*
+*Point at the green banner. The board ends at 4 out and safe, 3 need a ride, 1 needs medical help, 1 is staying, and 1 welfare check.*
 
 "Every resident is accounted for or has a responder on the way." That's Headcount.
+
+## Fallback demo (30 seconds), if the server or wifi fails
+
+Open `/?mock=1` ahead of time in a second tab. Mock mode runs the whole campaign in the browser with the same 10 fictional residents, with no server, no Twilio and no Gemini. The board shows a **MOCK DATA** tag, so say so out loud.
+
+1. **0:00** *Switch to the mock tab and press Start.* "Same campaign, running in the browser. The wifi's down, but the logic isn't."
+2. **0:10** *Point at Maria's row turning **needs a ride**.* "Maria answered in Spanish: no car, on oxygen. She's flagged for a ride, and her daughter is told."
+3. **0:20** *Point at Walter's row.* "Walter never answered. After three calls, the board says send a person. It never guesses."
+4. **0:30** *Point at the banner.* "Every resident is accounted for or has a responder on the way."
+
+VoiceOS needs the real server, so skip it in mock mode. If you recorded a VoiceOS answer during rehearsal, play that instead.
 
 ## Judge Q&A prep
 
@@ -59,7 +70,7 @@ Minutes to account for every resident in a zone. The board tracks it live: total
 Both ends. Voice in for residents who can't use apps: a plain phone call they answer by talking or pressing 1, 2, or 3. Voice out for responders through the MCP server: "who still needs help?", "what's Walter's status?", "start the calls" (which asks for confirmation first, since it places real calls).
 
 **Why not let the AI decide?**
-Auditability and trust. Gemini only turns speech into structured facts. Retries, welfare checks, priority, and who gets a text are plain Python with tests. If someone asks why a person went to Walter's door, the answer is "three unanswered calls", not "the model said so". When Gemini times out or is unsure, we fall back to keywords, then to a human callback.
+Auditability and trust. Gemini only turns speech into structured facts. Retries, welfare checks, priority, and who gets a text are plain Python with tests. If someone asks why a person went to Walter's door, the answer is "three unanswered calls", not "the model said so". Gemini takes about a second per answer. If it's slower than 8 seconds, errors, or is unsure, we fall back to keywords, then to a human callback.
 
 **Privacy and consent?**
 Opt-in resident lists from partner agencies. We store only what a responder needs: name, address, a few risk flags, and one emergency contact. Every resident in the demo is fictional unless mapped to a consenting teammate's phone. This is not an official alert system.
