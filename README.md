@@ -1,4 +1,4 @@
-# Headcount
+<h1><img src="app/static/logo.svg" width="280" alt="Headcount"></h1>
 
 **When an evacuation order goes out, Headcount calls every older adult in the zone until each one is accounted for.**
 
@@ -221,6 +221,7 @@ app/engine.py        call state machine: retries, welfare checks, texts
 app/seed.py          the 20 demo residents, plus residents_phones.json mapping
 app/main.py          FastAPI server: board, simulator, and Twilio webhooks
 app/twilio_voice.py  outbound calls, TwiML, SMS, signature validation
+app/static/          logo.svg, logo-mark.svg, favicon.svg (see docs/BRAND.md)
 app/static/          board.html (dispatch board), phone.html (phone simulator), headcount-api.js (shared API and mock layer)
 mcp_server.py        VoiceOS tools over the same HTTP API
 scripts/preflight.py demo readiness check (no calls or texts)
