@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 
 from twilio.request_validator import RequestValidator
+from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
 from app import scripts
@@ -42,6 +43,10 @@ class TwilioClient:
         )
         return call.sid
 
+    def send_checkin(self, r: Resident, attempt: int) -> str:
+        """Text check-in instead of a call (contact_mode="text"). The reply arrives at /twilio/sms."""
+        return self.send_sms(r.phone, scripts.prompt_for(r))
+
     def send_sms(self, to: str, body: str) -> str:
         msg = self.client.messages.create(to=to, from_=self.settings.twilio_from_number, body=body)
         return msg.sid
@@ -73,6 +78,24 @@ def say_twiml(text: str, lang: str) -> str:
     resp = VoiceResponse()
     resp.say(text, language=scripts.LANG_CODE[scripts.lang(lang)])
     resp.hangup()
+    return str(resp)
+
+
+# Unclear-reply text. Voice ASK_AGAIN says "press"; a text should say "reply".
+_TEXT_ASK_AGAIN = {
+    "en": "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+    "es": "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
+}
+
+
+def text_ask_again(lang: str) -> str:
+    return getattr(scripts, "TEXT_ASK_AGAIN", _TEXT_ASK_AGAIN)[scripts.lang(lang)]
+
+
+def message_twiml(text: str) -> str:
+    """Reply to an inbound SMS with one message."""
+    resp = MessagingResponse()
+    resp.message(text)
     return str(resp)
 
 

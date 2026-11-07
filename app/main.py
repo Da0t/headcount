@@ -12,14 +12,16 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from twilio.twiml.messaging_response import MessagingResponse
 
-from app import scripts
+from app import accessibility, scripts
 from app.classify import classify_audio, classify_text, digits_reading
 from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, load_residents
-from app.twilio_voice import TwilioClient, prompt_twiml, say_twiml, signature_ok
+from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok,
+                              text_ask_again)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("headcount.main")
@@ -87,7 +89,16 @@ async def phone():
 async def state():
     snap = engine.snapshot()
     snap["zone"] = ZONE
+    for row in snap["residents"]:
+        r = engine.residents.get(row["id"])
+        row["assist"] = accessibility.assist(r) if r else None
     return snap
+
+
+@app.get("/api/accessibility")
+async def accessibility_shelters():
+    """Fictional demo shelters and what each can handle."""
+    return accessibility.shelters()
 
 
 @app.get("/api/health")
@@ -128,8 +139,12 @@ async def autopilot(on: bool = True):
 
 # ---------------------------------------------------------------------- phone simulator
 
+def _mode(r) -> str:
+    return getattr(r, "contact_mode", "voice") or "voice"
+
+
 def _prompt(r) -> str:
-    return scripts.PROMPT[scripts.lang(r.lang)].format(first=r.first)
+    return scripts.prompt_for(r)
 
 
 def _resident(rid: int):
@@ -143,7 +158,7 @@ def _resident(rid: int):
 async def sim_ringing():
     return [
         {"id": r.id, "name": r.name, "first": r.first, "lang": r.lang, "status": r.status.value,
-         "attempt": r.attempts, "prompt": _prompt(r)}
+         "attempt": r.attempts, "prompt": _prompt(r), "contact_mode": _mode(r)}
         for r in engine.ringing_sim()
     ]
 
@@ -266,6 +281,51 @@ async def twilio_status(rid: int, request: Request, attempt: int = 1):
     if reason:
         await engine.no_answer(rid, attempt, reason)  # ignored if they already answered
     return Response(status_code=204)
+
+
+def _digits(s: str) -> str:
+    return re.sub(r"\D", "", s or "")
+
+
+@app.post("/twilio/sms")
+async def twilio_sms_inbound(request: Request):
+    """The Twilio number's Messaging webhook. Inbound texts carry no resident id, so match on From.
+
+    Only text-mode residents mapped to a real phone in residents_phones.json can match; anyone else gets no reply.
+    """
+    params = await _twilio_form(request)
+    sender = _digits(params.get("From", ""))
+    r = next((x for x in engine.residents.values()
+              if sender and _mode(x) == "text" and _digits(x.phone) == sender), None)
+    if r is None:
+        log.info("Inbound SMS from an unmapped number ignored.")
+        return _twiml(str(MessagingResponse()))
+    return await _sms_reply(r, r.attempts, params)
+
+
+@app.post("/twilio/sms/{rid}")
+async def twilio_sms(rid: int, request: Request, attempt: int = 1):
+    """Inbound SMS for a known resident and attempt. Body is a digit or free text."""
+    params = await _twilio_form(request)
+    r = engine.residents.get(rid)
+    if r is None:
+        return _twiml(message_twiml(scripts.CALLBACK["en"]))
+    return await _sms_reply(r, attempt, params)
+
+
+async def _sms_reply(r, attempt: int, params: dict) -> Response:
+    rid = r.id
+    lang = scripts.lang(r.lang)
+    body = params.get("Body", "").strip()
+    if not body:
+        return _twiml(message_twiml(text_ask_again(lang)))
+    reading = digits_reading(body) if body[:1].isdigit() and len(body) <= 3 else None
+    if reading is None:
+        engine.log(r, f"Texted: “{body}”", "speech")
+        reading = await classify_text(body, settings.gemini_model, settings.gemini_timeout,
+                                      api_key=settings.gemini_api_key)
+    say, keep = await engine.respond(rid, attempt, reading)
+    return _twiml(message_twiml(text_ask_again(lang) if keep else say))
 
 
 # ---------------------------------------------------------------------- static assets
