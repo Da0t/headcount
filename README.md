@@ -155,7 +155,8 @@ Someone in danger can also call the Headcount number. Set the number's **"A call
    - "Is anyone with you, and do you have pets?"
    - "What is your address or the nearest cross street?"
 3. The three answers are read together, the same way as an outgoing call: a keypad press decides the answer, speech adds the details, and the address becomes where they are. The same rules decide the outcome (OUT, NEEDS_RIDE, NEEDS_MEDICAL or STAYING; unclear twice means a human calls back).
-4. For a ride or medical help, the event log shows "Routing a responder (simulated dispatch, demo)." and the caller hears that a responder is being routed, followed by "This is a demo; no real responders are dispatched." The board shows them with their transport and shelter like any other resident.
+4. For a ride or medical help, the event log shows "Routing a responder (simulated dispatch, demo)." and the caller hears that a responder is being routed, followed by "This is a demo; no real responders are dispatched." On the board, an "Incoming call from" alert opens the caller's profile with an **INBOUND CALL** badge and flies the map to their pin (pulsing red ring). The profile's live strip steps through Incoming, Are you safe?, Who's with you, Location, Understood, and Responder routed. A vehicle labeled **SIMULATED DISPATCH, no real responders contacted** then drives from Station 0 to the caller and on to their shelter.
+5. If the caller hangs up before answering, they become NEEDS_CALLBACK so a person calls them back. Headcount never automatically redials a real phone.
 
 Each step is a signature-checked webhook (`/twilio/inbound/{rid}?attempt=N&step=1..3`).
 

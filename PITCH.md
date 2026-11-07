@@ -50,7 +50,7 @@ One more. I'll call it myself, as someone in danger.
 
 *Answer its three questions out loud: are you safe, who's with you, where are you.*
 
-It understood me, flagged what I need, and a simulated dispatch routes a vehicle to me. This is a demo: no real responders are contacted. In a real emergency, call 911.
+The board opens my profile, the map flies to my pin, and a simulated dispatch drives a vehicle to me. This is a demo: no real responders are contacted. In a real emergency, call 911.
 
 **1:55 · Close**
 
