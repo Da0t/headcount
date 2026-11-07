@@ -345,3 +345,22 @@ def test_call_one_dials_only_that_resident():
         assert await e.call_one(99) is False
         e.reset()
     run(go())
+
+
+def test_inbound_call_from_known_and_unknown_numbers():
+    async def go():
+        e = Engine(fast(), [one(id=1, phone="+1 (619) 555-0101")])
+        r = e.find_by_phone("+16195550101")
+        assert r is e.residents[1]
+        att = e.begin_inbound(1)
+        assert r.status == Status.IN_CALL and att == r.attempts
+        _, keep = await e.respond(1, att, keyword_classify("I fell and I can't get up"))
+        assert r.status == Status.NEEDS_MEDICAL and keep is False
+        new = e.add_caller("+18585550199", lat=32.82, lng=-117.1)
+        assert e.find_by_phone("858-555-0199") is new and new.name == "Caller ...0199"
+        att2 = e.begin_inbound(new.id)
+        await e.respond(new.id, att2, keyword_classify("No car, I need a ride"))
+        assert new.status == Status.NEEDS_RIDE
+        assert e.snapshot()["total"] == 2
+        e.reset()
+    run(go())

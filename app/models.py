@@ -80,7 +80,7 @@ class Resident:
     bedridden: bool = False
     lives_alone: bool = False
     hearing: bool = False
-    lat: float = 0.0  # fictional demo location (Alpine, San Diego County)
+    lat: float = 0.0  # fictional demo location (Tierrasanta, City of San Diego)
     lng: float = 0.0
     contact_mode: str = "voice"  # "voice" = phone call; "text" = SMS check-in for deaf / hard-of-hearing residents
     contact_name: str = ""
