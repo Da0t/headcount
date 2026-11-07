@@ -386,3 +386,15 @@ def test_dropped_inbound_call_flags_callback_without_redial():
         assert placed == []
         e.reset()
     run(go())
+
+
+def test_keepalive_pushes_watchdog_back():
+    async def go():
+        e = Engine(fast(), [one()])
+        att = e.begin_inbound(1)
+        assert e.keepalive(1, att, seconds=0.05)
+        await asyncio.sleep(0.2)
+        assert e.residents[1].status == Status.NEEDS_CALLBACK  # watchdog fired on the new, short timer
+        assert e.keepalive(1, att) is False  # call over
+        e.reset()
+    run(go())

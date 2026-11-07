@@ -153,6 +153,22 @@ class Engine:
         self._schedule(rid, "ring", 150, self.inbound_dropped, rid, r.attempts)
         return r.attempts
 
+    def keepalive(self, rid: int, attempt: int, seconds: float = 150) -> bool:
+        """The caller is still on the line (e.g. we re-asked after silence): push the watchdog back.
+
+        Works for outbound and inbound calls. Returns False if the attempt is stale or the call is over.
+        """
+        r = self.residents.get(rid)
+        if r is None or attempt != r.attempts or r.status not in LIVE:
+            return False
+        inbound = any(ev.get("rid") == rid and str(ev.get("msg", "")).startswith("Incoming call") for ev in self.events[-50:])
+        if inbound:
+            self._schedule(rid, "ring", seconds, self.inbound_dropped, rid, attempt)
+        else:
+            self._schedule(rid, "ring", seconds, self.no_answer, rid, attempt, "call ended without an answer")
+        r.updated = time.time()
+        return True
+
     async def inbound_dropped(self, rid: int, attempt: int) -> None:
         """An incoming call ended before a clear answer: flag a human callback instead of dialing automatically."""
         r = self.residents.get(rid)
