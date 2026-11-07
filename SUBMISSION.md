@@ -2,6 +2,10 @@
 
 Draft text for the [MLH submission form](https://www.mlh.com/events/aic-at-uc-san-diego-hack-for-humanity/submissions/new). Every claim below can be checked in this repo. Paste each section into the matching field.
 
+## Live demo
+
+**Live demo:** [headcount-demo.vercel.app](https://headcount-demo.vercel.app) (dispatch board) and [/phone](https://headcount-demo.vercel.app/phone) (phone simulator). This is a browser simulation: the full 20-resident campaign runs in mock mode with the real Mapbox map and a "Simulate incoming call" button, with no server, no Gemini and no Twilio. The real call flow (Twilio calls and texts, Gemini understanding) runs on the server, from this repo's README Quick start.
+
 ## One-liner
 
 When an evacuation order goes out, Headcount phones every older adult in the zone, in English or Spanish, until each one is accounted for.
