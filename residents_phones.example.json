@@ -1,4 +1,4 @@
 {
-  "1": {"phone": "+16195550101", "contact_phone": "+16195550102"},
-  "3": {"phone": "+16195550103", "contact_phone": "+16195550104", "name": "optional display name override"}
+  "1": {"phone": "+16195550101", "contact_phone": "+16195550102", "name": "Dat (presenter)"},
+  "3": {"phone": "+16195550103", "contact_phone": "+16195550104"}
 }

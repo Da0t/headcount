@@ -333,3 +333,15 @@ def test_text_mode_uses_twilio_send_checkin_not_place_call():
 def test_george_is_text_mode_in_seed():
     g = [r for r in load_residents(fast()) if r.name == "George Patel"][0]
     assert g.contact_mode == "text" and g.hearing
+
+
+def test_call_one_dials_only_that_resident():
+    async def go():
+        e = Engine(fast(), [one(id=1), one(id=2, name="Other Person")])
+        assert await e.call_one(2) is True
+        assert await wait_for(lambda: e.residents[2].status == Status.CALLING)
+        assert e.residents[1].status == Status.PENDING and e.residents[1].attempts == 0
+        assert any("single call requested" in ev["msg"] for ev in e.events)
+        assert await e.call_one(99) is False
+        e.reset()
+    run(go())

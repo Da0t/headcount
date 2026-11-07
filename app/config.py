@@ -29,6 +29,7 @@ class Settings:
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
     gemini_timeout: float = 8.0
+    mapbox_token: str = ""  # public pk. token for the board map
 
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
@@ -68,6 +69,7 @@ def load_settings(**overrides) -> Settings:
         gemini_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "",
         gemini_model=os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite",
         gemini_timeout=_float("HEADCOUNT_GEMINI_TIMEOUT", 8.0),
+        mapbox_token=os.getenv("MAPBOX_TOKEN", ""),
         twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
         twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
         twilio_api_key_sid=os.getenv("TWILIO_API_KEY_SID", ""),

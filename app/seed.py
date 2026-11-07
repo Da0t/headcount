@@ -11,6 +11,14 @@ from app.models import Resident
 log = logging.getLogger("headcount.seed")
 
 ZONE = "Alpine (demo zone)"
+ZONE_CENTER = (32.8351, -116.7664)  # Alpine, San Diego County, CA
+
+# Fictional pin locations (not real residents' homes): spread on a jittered ring around the town center.
+def _place(rid: int) -> tuple[float, float]:
+    import math
+    ang = rid * 2.399963  # golden angle
+    rad = 0.006 + 0.0022 * (rid % 7)  # roughly 0.7 to 2 km
+    return round(ZONE_CENTER[0] + rad * math.sin(ang), 5), round(ZONE_CENTER[1] + rad * 1.2 * math.cos(ang), 5)
 
 # sim_script: one step per attempt. "no_answer" | "decline" | [utterances...]. A lone digit is a keypad press
 # (or a "1"/"2"/"3" text reply for contact_mode="text" residents).
@@ -78,6 +86,9 @@ SEED: list[Resident] = [
 def load_residents(settings=None) -> list[Resident]:
     """Fresh copies of the seed, with real numbers from residents_phones.json (gitignored) applied."""
     residents = copy.deepcopy(SEED)
+    for r in residents:
+        if not (r.lat or r.lng):
+            r.lat, r.lng = _place(r.id)
     path = getattr(settings, "phones_file", "") or "residents_phones.json"
     if not os.path.exists(path):
         return residents

@@ -5,7 +5,9 @@ Run: uvicorn app.main:app --port 8000
 from __future__ import annotations
 
 import logging
+import os
 import re
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -57,11 +59,24 @@ def _build_twilio(s) -> Optional[TwilioClient]:
 
 
 twilio = _build_twilio(settings)
+
+
+def _demo_rid() -> Optional[int]:
+    raw = os.getenv("HEADCOUNT_DEMO_RID", "").strip()
+    return int(raw) if raw.isdigit() else None
+
 if twilio is not None and settings.twilio_validate and not settings.twilio_auth_token:
     log.warning("TWILIO_VALIDATE=1 but no TWILIO_AUTH_TOKEN: webhook signatures cannot be checked with an API key "
                 "secret, so validation is OFF.")
 engine = Engine(settings, load_residents(settings), twilio)
 app = FastAPI(title="Headcount")
+
+# Latest Twilio CallStatus per resident, for the live demo timeline. {rid: {"status", "attempt", "t", "call_sid"}}
+last_call_status: dict[int, dict] = {}
+DEMO_RID = _demo_rid()
+if DEMO_RID is not None and DEMO_RID not in engine.residents:
+    log.warning("HEADCOUNT_DEMO_RID=%s is not a resident id; ignoring it.", DEMO_RID)
+    DEMO_RID = None
 
 
 # ---------------------------------------------------------------------- pages
@@ -95,6 +110,40 @@ async def state():
     return snap
 
 
+@app.get("/api/residents/{rid}")
+async def resident_profile(rid: int):
+    """Everything about one resident for the profile panel: board row, assist, call details, their own events."""
+    r = engine.residents.get(rid)
+    if r is None:
+        raise HTTPException(404, f"no resident {rid}")
+    row = next((x for x in engine.snapshot()["residents"] if x["id"] == rid), {})
+    return {
+        **row,
+        "assist": accessibility.assist(r),
+        "contact_mode": getattr(r, "contact_mode", "voice"),
+        "call_sid": r.call_sid,
+        "attempt": r.attempts,
+        "demo": rid == DEMO_RID,
+        "last_call_status": last_call_status.get(rid),
+        "events": [e for e in engine.events if e.get("rid") == rid],
+    }
+
+
+@app.post("/api/residents/{rid}/call")
+async def call_resident(rid: int, request: Request):
+    """Demo: call (or text) ONE resident now. A real phone needs X-Headcount-Confirm: yes."""
+    r = engine.residents.get(rid)
+    if r is None:
+        raise HTTPException(404, f"no resident {rid}")
+    real = twilio is not None and bool(r.phone)
+    if real and request.headers.get("X-Headcount-Confirm", "").strip().lower() != "yes":
+        raise HTTPException(409, "Confirm to place a real call")
+    last_call_status.pop(rid, None)
+    if not await engine.call_one(rid):
+        raise HTTPException(404, f"no resident {rid}")
+    return {"ok": True, "real_phone": real}
+
+
 @app.get("/api/accessibility")
 async def accessibility_shelters():
     """Fictional demo shelters and what each can handle."""
@@ -105,7 +154,7 @@ async def accessibility_shelters():
 async def health():
     """Readiness at a glance for the board and the demo. Never includes secrets."""
     return {"ok": True, "gemini": settings.gemini_ready, "twilio": twilio is not None,
-            "model": settings.gemini_model, "autopilot": engine.autopilot}
+            "model": settings.gemini_model, "autopilot": engine.autopilot, "demo_rid": DEMO_RID}
 
 
 def _running() -> bool:
@@ -119,6 +168,7 @@ async def start():
     # or re-dial people mid-call. Reset first to start over.
     if _running():
         return {"ok": True, "already_running": True}
+    last_call_status.clear()
     await engine.start()
     return {"ok": True}
 
@@ -126,6 +176,7 @@ async def start():
 @app.post("/api/reset")
 async def reset():
     engine.reset()
+    last_call_status.clear()
     return {"ok": True}
 
 
@@ -277,7 +328,16 @@ _END_REASON = {
 @app.post("/twilio/status/{rid}")
 async def twilio_status(rid: int, request: Request, attempt: int = 1):
     params = await _twilio_form(request)
-    reason = _END_REASON.get(params.get("CallStatus", ""))
+    status = params.get("CallStatus", "")
+    r = engine.residents.get(rid)
+    if r is not None and status:
+        current = attempt == r.attempts
+        if current:
+            last_call_status[rid] = {"status": status, "attempt": attempt, "t": time.time(),
+                                     "call_sid": params.get("CallSid", "")}
+        engine.log(r, f"Twilio: {status}" + ("" if current else f" (old call, attempt {attempt})"),
+                   "error" if status in ("failed", "busy") else "info")
+    reason = _END_REASON.get(status)
     if reason:
         await engine.no_answer(rid, attempt, reason)  # ignored if they already answered
     return Response(status_code=204)
