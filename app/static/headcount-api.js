@@ -46,6 +46,14 @@
  * @property {string}  family            family-text status, e.g. "Texted Ana (daughter)"; "" if none yet
  * @property {number}  updated           unix seconds of last change
  * @property {boolean} real_phone        true if this resident is called on a real phone via Twilio
+ * @property {"voice"|"text"} contact_mode  "text": checked in by SMS instead of a call (deaf / hard of hearing)
+ * @property {Assist|null} assist        where to take them and how (may be missing on older servers)
+ *
+ * @typedef {Object} Assist
+ * @property {string|null} transport     "wheelchair van" | "ambulance" | "standard car" | "large-animal trailer" | null
+ * @property {string|null} shelter       fictional demo shelter name, or null if already out
+ * @property {string[]} shelter_why      why that shelter
+ * @property {string[]} needs            what responders should bring or know
  *
  * @typedef {Object} Event
  * @property {number} t                  unix seconds
@@ -76,7 +84,8 @@
  * @property {"en"|"es"} lang
  * @property {"CALLING"|"IN_CALL"} status   only CALLING should show an Answer button
  * @property {number} attempt
- * @property {string} prompt             what Headcount says when they pick up
+ * @property {string} prompt             what Headcount says when they pick up (the SMS text for text mode)
+ * @property {"voice"|"text"} contact_mode
  *
  * @typedef {Object} SayResult          POST /api/sim/{id}/say
  * @property {string}  say               Headcount's reply, speak it
@@ -166,7 +175,7 @@
 
   function mockClient(opts) {
     const ZONE = "Alpine (demo zone)";
-    const MAX_ATTEMPTS = 3, STAGGER = 1.5, GAP = 6;
+    const MAX_ATTEMPTS = 3, STAGGER = 0.9, GAP = 6;
     // phoneDemo: one call at a time and no ring-out, so a person has time to play the resident.
     const PHONE_DEMO = !!opts.phoneDemo;
     const RING = PHONE_DEMO ? Infinity : 7;
@@ -179,6 +188,15 @@
     const PROMPT = {
       en: "Hello {first}, this is Headcount, the evacuation check for your neighborhood. There is an evacuation order for your area. Please tell me, in your own words, are you out, or do you need help? You can also press 1 if you are out, 2 if you need a ride, or 3 if you need medical help.",
       es: "Hola {first}, le habla Headcount, la verificación de evacuación de su vecindario. Hay una orden de evacuación para su zona. Por favor dígame, con sus propias palabras, ¿ya salió o necesita ayuda? También puede oprimir 1 si ya salió, 2 si necesita transporte, o 3 si necesita ayuda médica.",
+    };
+    const TEXT_PROMPT = {
+      en: "Headcount, the evacuation check for your neighborhood: there is an evacuation order for your area, {first}. Reply 1 if you are out, 2 if you need a ride, 3 if you need medical help, or reply in your own words. If anyone is in danger right now, text or call 911.",
+      es: "Headcount, la verificación de evacuación de su vecindario: hay una orden de evacuación para su zona, {first}. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica, o responda con sus palabras. Si alguien está en peligro ahora mismo, envíe un texto o llame al 911.",
+    };
+    const promptFor = (r) => ((r.contact_mode === "text" ? TEXT_PROMPT : PROMPT)[r.lang === "es" ? "es" : "en"]).replace("{first}", r.name.split(" ")[0]);
+    const TEXT_ASK_AGAIN = {
+      en: "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+      es: "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
     };
     const ASK_AGAIN = {
       en: "Sorry, I didn't catch that. Are you out, or do you need help? Press 1 if you are out, 2 for a ride, 3 for medical help.",
@@ -211,42 +229,30 @@
       return Object.assign({ answer, people_with_them: 0, mobility_help: false, medical_equipment: [], pets: [],
         where_they_are: "", quote, responder_note: note, engine: "Gemini (mock)" }, extra || {});
     }
+    // Generated from app/seed.py (20 fictional residents) and a keyword-only run of the real engine.
+    // Each script step: "no_answer" | "decline" | [readings...] (what the engine understood, in order).
     const SEED = [
-      { id: 1, name: "Maria Gonzalez", age: 81, address: "1420 Tavern Rd", lang: "es", oxygen: true, lives_alone: true,
-        contact_name: "Ana", contact_relation: "daughter",
-        script: ["no_answer", [R("NEEDS_RIDE", "Sí, aquí estoy. No tengo carro y uso oxígeno. Necesito que me ayuden a salir.",
-          "No car, uses oxygen. Needs a ride out.", { medical_equipment: ["oxygen"] })]] },
-      { id: 2, name: "Walter Briggs", age: 87, address: "3 Arnold Way", bedridden: true, lives_alone: true,
-        contact_name: "Linda", contact_relation: "niece", script: ["no_answer", "no_answer", "no_answer"] },
-      { id: 3, name: "Dorothy Chen", age: 76, address: "2210 Alpine Blvd", contact_name: "Kevin", contact_relation: "son",
-        script: [[R("OUT", "We're out, we're at my son's place in El Cajon.", "Out. At son's place in El Cajon.",
-          { where_they_are: "son's place in El Cajon" })]] },
-      { id: 4, name: "Frank Russo", age: 84, address: "915 Victoria Dr", mobility: true, contact_name: "Tony", contact_relation: "son",
-        script: [[R("NEEDS_RIDE", "My wife's in a wheelchair and I can't drive anymore. We need help getting out. We have a dog too.",
-          "Two people, wife uses a wheelchair, cannot drive. Has a dog. Needs a wheelchair-capable ride.",
-          { people_with_them: 1, mobility_help: true, pets: ["dog"] })]] },
-      { id: 5, name: "James Whitaker", age: 79, address: "18 Harbison Canyon Rd", hearing: true,
-        script: ["decline", [R("STAYING", "I'm not leaving. I've got four horses here.",
-          "Refuses to leave, staying with 4 horses.", { pets: ["4 horses"] })]] },
-      { id: 6, name: "Rosa Medina", age: 90, address: "640 South Grade Rd", lang: "es", mobility: true, lives_alone: true,
-        contact_name: "Carmen", contact_relation: "granddaughter",
-        script: [[R("NEEDS_MEDICAL", "Me caí en la cocina y no me puedo levantar.",
-          "Fell in the kitchen and cannot get up. Send medical.", { mobility_help: true, where_they_are: "kitchen" })]] },
-      { id: 7, name: "George Patel", age: 72, address: "77 Marshall Rd", contact_name: "Priya", contact_relation: "daughter",
-        script: [[R("OUT", "1", "Pressed 1: says they are out.", { engine: "keypad" })]] },
-      { id: 8, name: "Betty Lawson", age: 85, address: "302 Olive Ln", lives_alone: true, contact_name: "Susan", contact_relation: "daughter",
-        script: [[R("UNCLEAR", "Hmm? Who is this?", ""),
-          R("OUT", "Oh, the fire. Yes, I already left. I'm at the shelter at the high school.",
-            "Out. At the high school shelter.", { where_they_are: "shelter at the high school" })]] },
-      { id: 9, name: "Luis Herrera", age: 68, address: "1105 Japatul Valley Rd", lang: "es", contact_name: "Marco", contact_relation: "son",
-        script: ["no_answer", [R("OUT", "Ya salimos todos, estamos bien.", "Out, whole household left, all fine.")]] },
-      { id: 10, name: "Edna Morales", age: 93, address: "48 Viejas View Pl", oxygen: true, bedridden: true, lives_alone: true,
-        contact_name: "Ruth", contact_relation: "neighbor",
-        script: ["no_answer", [R("NEEDS_RIDE", "My caregiver didn't come today. I can't get out of bed by myself.",
-          "Bedridden, caregiver did not come, cannot get out of bed alone. Needs a ride with a lift.",
-          { mobility_help: true })]] },
+      {"id": 1, "name": "Maria Gonzalez", "age": 81, "address": "1420 Tavern Rd", "lang": "es", "oxygen": true, "mobility": false, "bedridden": false, "lives_alone": true, "hearing": false, "contact_name": "Ana", "contact_relation": "daughter", "contact_mode": "voice", "assist": {"transport": "standard car", "shelter": "Alpine High School gym (demo)", "shelter_why": ["backup power for oxygen concentrators"], "needs": ["oxygen: bring portable tanks, shelter needs backup power"]}, "script": ["no_answer", [{"answer": "NEEDS_RIDE", "people_with_them": 0, "mobility_help": false, "medical_equipment": ["oxygen"], "pets": [], "where_they_are": "", "quote": "Sí, aquí estoy. No tengo carro y uso oxígeno. Necesito que me ayuden a salir.", "responder_note": "Needs a ride out. Uses oxygen.", "engine": "Gemini (mock)"}]]},
+      {"id": 2, "name": "Walter Briggs", "age": 87, "address": "3 Arnold Way", "lang": "en", "oxygen": false, "mobility": false, "bedridden": true, "lives_alone": true, "hearing": false, "contact_name": "Linda", "contact_relation": "niece", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine High School gym (demo)", "shelter_why": ["wheelchair accessible"], "needs": ["bedridden: needs a stretcher or lift"]}, "script": ["no_answer", "no_answer", "no_answer"]},
+      {"id": 3, "name": "Dorothy Chen", "age": 76, "address": "2210 Alpine Blvd", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Kevin", "contact_relation": "son", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out: at my son's place in El Cajon"], "needs": []}, "script": [[{"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "at my son's place in El Cajon", "quote": "We're out, we're at my son's place in El Cajon.", "responder_note": "Says they are out. Now at my son's place in El Cajon.", "engine": "Gemini (mock)"}]]},
+      {"id": 4, "name": "Frank Russo", "age": 84, "address": "915 Victoria Dr", "lang": "en", "oxygen": false, "mobility": true, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Tony", "contact_relation": "son", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine Community Center (demo)", "shelter_why": ["wheelchair accessible", "pets allowed"], "needs": ["wheelchair or walker: accessible vehicle", "pets: dog", "1 more person(s) with them"]}, "script": [[{"answer": "NEEDS_RIDE", "people_with_them": 1, "mobility_help": true, "medical_equipment": [], "pets": ["dog"], "where_they_are": "", "quote": "My wife's in a wheelchair and I can't drive anymore. We need help getting out. We have a dog too.", "responder_note": "Needs a ride out. Mobility help needed. 1 other person with them. Animals: dog.", "engine": "Gemini (mock)"}]]},
+      {"id": 5, "name": "James Whitaker", "age": 79, "address": "18 Harbison Canyon Rd", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": true, "contact_name": "", "contact_relation": "", "contact_mode": "voice", "assist": {"transport": null, "shelter": "Harbison Canyon Fairgrounds (demo)", "shelter_why": ["takes large animals"], "needs": ["staying: plan ready in case they change their mind", "large animals: 4 horses (large-animal trailer)", "hard of hearing: use text or face-to-face, not a loudspeaker"]}, "script": ["decline", [{"answer": "STAYING", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": ["4 horses"], "where_they_are": "", "quote": "I'm not leaving. I've got four horses here.", "responder_note": "Refusing to leave. Animals: 4 horses.", "engine": "Gemini (mock)"}]]},
+      {"id": 6, "name": "Rosa Medina", "age": 90, "address": "640 South Grade Rd", "lang": "es", "oxygen": false, "mobility": true, "bedridden": false, "lives_alone": true, "hearing": false, "contact_name": "Carmen", "contact_relation": "granddaughter", "contact_mode": "voice", "assist": {"transport": "ambulance", "shelter": "Viejas Valley Medical Shelter (demo)", "shelter_why": ["wheelchair accessible", "medical staff on site"], "needs": ["medical help: ambulance crew", "wheelchair or walker: accessible vehicle"]}, "script": [[{"answer": "NEEDS_MEDICAL", "people_with_them": 0, "mobility_help": true, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "Me caí en la cocina y no me puedo levantar.", "responder_note": "Needs medical help. Mobility help needed.", "engine": "Gemini (mock)"}]]},
+      {"id": 7, "name": "George Patel", "age": 72, "address": "77 Marshall Rd", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": true, "contact_name": "Priya", "contact_relation": "daughter", "contact_mode": "text", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out"], "needs": ["hard of hearing: use text or face-to-face, not a loudspeaker"]}, "script": [[{"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "1", "responder_note": "Pressed 1: says they are out.", "engine": "keypad"}]]},
+      {"id": 8, "name": "Betty Lawson", "age": 85, "address": "302 Olive Ln", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": true, "hearing": false, "contact_name": "Susan", "contact_relation": "daughter", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out: at the shelter at the high school"], "needs": []}, "script": [[{"answer": "UNCLEAR", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "Hmm? Who is this?", "responder_note": "", "engine": "Gemini (mock)"}, {"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "at the shelter at the high school", "quote": "Oh, the fire. Yes, I already left. I'm at the shelter at the high school.", "responder_note": "Says they are out. Now at the shelter at the high school.", "engine": "Gemini (mock)"}]]},
+      {"id": 9, "name": "Luis Herrera", "age": 68, "address": "1105 Japatul Valley Rd", "lang": "es", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Marco", "contact_relation": "son", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out"], "needs": []}, "script": ["no_answer", [{"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "Ya salimos todos, estamos bien.", "responder_note": "Says they are out.", "engine": "Gemini (mock)"}]]},
+      {"id": 10, "name": "Edna Morales", "age": 93, "address": "48 Viejas View Pl", "lang": "en", "oxygen": true, "mobility": false, "bedridden": true, "lives_alone": true, "hearing": false, "contact_name": "Ruth", "contact_relation": "neighbor", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine High School gym (demo)", "shelter_why": ["wheelchair accessible", "backup power for oxygen concentrators"], "needs": ["bedridden: needs a stretcher or lift", "oxygen: bring portable tanks, shelter needs backup power"]}, "script": ["no_answer", [{"answer": "NEEDS_RIDE", "people_with_them": 0, "mobility_help": true, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "My caregiver didn't come today. I can't get out of bed by myself.", "responder_note": "Needs a ride out. Mobility help needed.", "engine": "Gemini (mock)"}]]},
+      {"id": 11, "name": "Nicolette Vale", "age": 69, "address": "1842 Alpine Blvd", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Mira", "contact_relation": "niece", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out"], "needs": ["pets: cat", "1 more person(s) with them"]}, "script": ["no_answer", [{"answer": "OUT", "people_with_them": 1, "mobility_help": false, "medical_equipment": [], "pets": ["cat"], "where_they_are": "", "quote": "We're out at my niece's place in El Cajon. My husband and I brought our cats.", "responder_note": "Says they are out. 1 other person with them. Animals: cat.", "engine": "Gemini (mock)"}]]},
+      {"id": 12, "name": "Solana Reyes", "age": 78, "address": "2361 Tavern Rd", "lang": "es", "oxygen": true, "mobility": true, "bedridden": false, "lives_alone": true, "hearing": false, "contact_name": "Dalia", "contact_relation": "daughter", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine High School gym (demo)", "shelter_why": ["wheelchair accessible", "backup power for oxygen concentrators", "no demo shelter also has: pets allowed"], "needs": ["wheelchair or walker: accessible vehicle", "oxygen: bring portable tanks, shelter needs backup power", "pets: dog"]}, "script": ["no_answer", [{"answer": "NEEDS_RIDE", "people_with_them": 0, "mobility_help": true, "medical_equipment": ["oxygen"], "pets": ["dog"], "where_they_are": "", "quote": "No tengo carro y uso oxígeno y andadera. Tengo un perro. Necesito que me ayuden a salir.", "responder_note": "Needs a ride out. Mobility help needed. Uses oxygen. Animals: dog.", "engine": "Gemini (mock)"}]]},
+      {"id": 13, "name": "Mateo Lumbre", "age": 91, "address": "821 Alpine Blvd", "lang": "es", "oxygen": true, "mobility": true, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Rafa", "contact_relation": "grandson", "contact_mode": "voice", "assist": {"transport": "ambulance", "shelter": "Viejas Valley Medical Shelter (demo)", "shelter_why": ["wheelchair accessible", "backup power for oxygen concentrators", "medical staff on site"], "needs": ["medical help: ambulance crew", "wheelchair or walker: accessible vehicle", "oxygen: bring portable tanks, shelter needs backup power", "equipment: dialysis"]}, "script": [[{"answer": "NEEDS_MEDICAL", "people_with_them": 0, "mobility_help": false, "medical_equipment": ["dialysis"], "pets": [], "where_they_are": "", "quote": "Me caí y necesito una ambulancia. También hago diálisis.", "responder_note": "Needs medical help. Uses dialysis.", "engine": "Gemini (mock)"}]]},
+      {"id": 14, "name": "Juniper Finch", "age": 74, "address": "1297 Arnold Way", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": true, "contact_name": "Cedar", "contact_relation": "spouse", "contact_mode": "voice", "assist": {"transport": null, "shelter": "Alpine High School gym (demo)", "shelter_why": ["backup power for oxygen concentrators"], "needs": ["staying: plan ready in case they change their mind", "equipment: cpap (needs power)", "hard of hearing: use text or face-to-face, not a loudspeaker"]}, "script": [[{"answer": "STAYING", "people_with_them": 0, "mobility_help": false, "medical_equipment": ["cpap"], "pets": [], "where_they_are": "", "quote": "I'm staying here. My CPAP is here and the chickens need feeding.", "responder_note": "Refusing to leave. Uses cpap.", "engine": "Gemini (mock)"}]]},
+      {"id": 15, "name": "Tomasina Del Sol", "age": 96, "address": "2760 South Grade Rd", "lang": "es", "oxygen": true, "mobility": false, "bedridden": true, "lives_alone": true, "hearing": false, "contact_name": "", "contact_relation": "", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine High School gym (demo)", "shelter_why": ["wheelchair accessible", "backup power for oxygen concentrators"], "needs": ["bedridden: needs a stretcher or lift", "oxygen: bring portable tanks, shelter needs backup power"]}, "script": ["no_answer", "no_answer", "no_answer"]},
+      {"id": 16, "name": "Peregrine Moss", "age": 66, "address": "44 Harbison Canyon Rd", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Wren", "contact_relation": "granddaughter", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out"], "needs": []}, "script": [[{"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "We're safe at the shelter with my granddaughter.", "responder_note": "Says they are out.", "engine": "Gemini (mock)"}]]},
+      {"id": 17, "name": "Amalia Cielo", "age": 83, "address": "1905 Victoria Dr", "lang": "es", "oxygen": false, "mobility": true, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Belen", "contact_relation": "daughter", "contact_mode": "voice", "assist": {"transport": "wheelchair van", "shelter": "Alpine Community Center (demo)", "shelter_why": ["wheelchair accessible", "pets allowed"], "needs": ["wheelchair or walker: accessible vehicle", "pets: 2 cats"]}, "script": ["no_answer", [{"answer": "NEEDS_RIDE", "people_with_them": 0, "mobility_help": true, "medical_equipment": [], "pets": ["2 cats"], "where_they_are": "", "quote": "No puedo caminar y uso silla de ruedas. Tengo dos gatos.", "responder_note": "Needs a ride out. Mobility help needed. Animals: 2 cats.", "engine": "Gemini (mock)"}]]},
+      {"id": 18, "name": "Orion Bellweather", "age": 88, "address": "903 Marshall Rd", "lang": "en", "oxygen": false, "mobility": true, "bedridden": false, "lives_alone": false, "hearing": true, "contact_name": "Pip", "contact_relation": "grandchild", "contact_mode": "text", "assist": {"transport": "wheelchair van", "shelter": "Alpine High School gym (demo)", "shelter_why": ["wheelchair accessible"], "needs": ["wheelchair or walker: accessible vehicle", "hard of hearing: use text or face-to-face, not a loudspeaker"]}, "script": [[{"answer": "NEEDS_RIDE", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "2", "responder_note": "Pressed 2: needs a ride out.", "engine": "keypad"}]]},
+      {"id": 19, "name": "Maribel Quill", "age": 71, "address": "52 Viejas View Pl", "lang": "en", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Sol", "contact_relation": "sister", "contact_mode": "voice", "assist": {"transport": null, "shelter": "Alpine High School gym (demo)", "shelter_why": ["general shelter, no special needs known"], "needs": []}, "script": [[{"answer": "UNCLEAR", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "Maybe later.", "responder_note": "", "engine": "Gemini (mock)"}, {"answer": "UNCLEAR", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": [], "where_they_are": "", "quote": "I'm not sure.", "responder_note": "Answer unclear.", "engine": "Gemini (mock)"}]]},
+      {"id": 20, "name": "Tavio Bramble", "age": 82, "address": "1337 Japatul Valley Rd", "lang": "es", "oxygen": false, "mobility": false, "bedridden": false, "lives_alone": false, "hearing": false, "contact_name": "Lio", "contact_relation": "son", "contact_mode": "voice", "assist": {"transport": null, "shelter": null, "shelter_why": ["already out"], "needs": ["large animals: horses (large-animal trailer)"]}, "script": [[{"answer": "OUT", "people_with_them": 0, "mobility_help": false, "medical_equipment": [], "pets": ["horses"], "where_they_are": "", "quote": "Ya salimos y estamos a salvo en casa de mi hijo en El Cajon. El caballo está con nosotros.", "responder_note": "Says they are out. Animals: horses.", "engine": "Gemini (mock)"}]]},
     ];
-
     let residents = [], events = [], startedAt = null, timers = [], gen = 0;
     let autopilot = !PHONE_DEMO;
     const now = () => Date.now() / 1000;
@@ -349,7 +355,7 @@
           return [CALLBACK[lang], false];
         }
         r.updated = now();
-        return [ASK_AGAIN[lang], true];
+        return [(r.contact_mode === "text" ? TEXT_ASK_AGAIN : ASK_AGAIN)[lang], true];
       }
       r.reading = reading; touch(r, reading.answer);
       log(r, (EVLABEL[reading.answer] + ". " + (reading.responder_note || reading.quote)).trim(), EVKIND[reading.answer]);
@@ -381,7 +387,7 @@
     function start() {
       reset(); startedAt = now();
       log(null, "Evacuation order received. Calling " + residents.length + " residents.", "start");
-      if (PHONE_DEMO) dial(residents[2]);   // Dorothy first; the rest ring one at a time
+      if (PHONE_DEMO) dial(residents[2]);   // Dorothy first; the rest ring one at a time (George and Orion text)
       else residents.forEach((r, i) => later(i * STAGGER, () => dial(r)));
     }
     function snapshot() {
@@ -392,7 +398,8 @@
         if (UNACC.has(r.status)) unacc += 1;
         return { id: r.id, name: r.name, first: first(r), age: r.age, address: r.address, lang: r.lang,
           status: r.status, attempts: r.attempts, channel: r.channel, score: s, why, reading: r.reading,
-          family: r.family, updated: r.updated, real_phone: false };
+          family: r.family, updated: r.updated, real_phone: false, contact_mode: r.contact_mode || "voice",
+          assist: r.assist || null };
       });
       rows.sort((a, b) => (b.score - a.score) || a.name.localeCompare(b.name));
       return { zone: ZONE, total: rows.length, unaccounted: unacc, done: startedAt !== null && unacc === 0,
@@ -419,14 +426,14 @@
         if (PHONE_DEMO && startedAt !== null && !residents.some((r) => UNACC.has(r.status))) start();   // loop the demo
         return residents.filter((r) => r.channel === "sim" && LIVE.has(r.status)).map((r) => ({
           id: r.id, name: r.name, first: first(r), lang: r.lang, status: r.status, attempt: r.attempts,
-          prompt: PROMPT[r.lang === "es" ? "es" : "en"].replace("{first}", first(r)) }));
+          prompt: promptFor(r), contact_mode: r.contact_mode || "voice" }));
       },
       simAnswer: async (rid, attempt) => {
         await delay();
         const r = liveSim(rid, attempt);
         if (!r || r.status !== "CALLING") throw new ApiError(409, "That call is no longer ringing.");
         pickUp(r, r.attempts);
-        return { say: PROMPT[r.lang === "es" ? "es" : "en"].replace("{first}", first(r)) };
+        return { say: promptFor(r) };
       },
       simDecline: async (rid, attempt, reason) => {
         await delay();
