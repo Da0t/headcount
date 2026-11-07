@@ -81,15 +81,8 @@ def say_twiml(text: str, lang: str) -> str:
     return str(resp)
 
 
-# Unclear-reply text. Voice ASK_AGAIN says "press"; a text should say "reply".
-_TEXT_ASK_AGAIN = {
-    "en": "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
-    "es": "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
-}
-
-
 def text_ask_again(lang: str) -> str:
-    return getattr(scripts, "TEXT_ASK_AGAIN", _TEXT_ASK_AGAIN)[scripts.lang(lang)]
+    return scripts.TEXT_ASK_AGAIN[scripts.lang(lang)]
 
 
 def message_twiml(text: str) -> str:

@@ -75,6 +75,13 @@ TEXT_PROMPT = {
 }
 
 
+# Asked again over SMS when a text reply is unclear. Says "reply", not "press" like the voice ASK_AGAIN.
+TEXT_ASK_AGAIN = {
+    "en": "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+    "es": "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
+}
+
+
 def prompt_for(r) -> str:
     """The opening message for a resident: a spoken prompt for voice, a text for contact_mode='text'."""
     table = TEXT_PROMPT if getattr(r, "contact_mode", "voice") == "text" else PROMPT

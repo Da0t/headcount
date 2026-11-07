@@ -242,3 +242,13 @@ def test_send_checkin_texts_the_prompt():
     r.phone = "+16195550107"
     assert tc.send_checkin(r, 1) == "SM1"
     assert sent[0][0] == r.phone and "Reply 1" in sent[0][1]
+
+
+def test_text_ask_again_lives_in_scripts_and_says_reply():
+    from app import scripts
+    from app.twilio_voice import text_ask_again
+    for lang in ("en", "es"):
+        assert text_ask_again(lang) == scripts.TEXT_ASK_AGAIN[lang]
+        assert text_ask_again(lang).startswith("Headcount")
+    assert "Reply 1" in scripts.TEXT_ASK_AGAIN["en"] and "Responda 1" in scripts.TEXT_ASK_AGAIN["es"]
+    assert "press" not in scripts.TEXT_ASK_AGAIN["en"].lower()
