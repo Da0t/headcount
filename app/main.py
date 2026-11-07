@@ -10,6 +10,7 @@ from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import scripts
 from app.classify import classify_audio, classify_text, digits_reading
@@ -81,8 +82,24 @@ async def state():
     return snap
 
 
+@app.get("/api/health")
+async def health():
+    """Readiness at a glance for the board and the demo. Never includes secrets."""
+    return {"ok": True, "gemini": settings.gemini_ready, "twilio": settings.twilio_ready and twilio is not None,
+            "model": settings.gemini_model, "autopilot": engine.autopilot}
+
+
+def _running() -> bool:
+    snap = engine.snapshot()
+    return engine.started_at is not None and not snap["done"]
+
+
 @app.post("/api/start")
 async def start():
+    # Idempotent while a campaign is live: restarting would reuse attempt numbers, so a late webhook
+    # from a call that is still ringing could land on the new campaign. Reset first to start over.
+    if _running():
+        return {"ok": True, "already_running": True}
     await engine.start()
     return {"ok": True}
 
@@ -241,3 +258,8 @@ async def twilio_status(rid: int, request: Request, attempt: int = 1):
     if reason:
         await engine.no_answer(rid, attempt, reason)  # ignored if they already answered
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------- static assets
+# Mounted last so it can never shadow an API route. Serves shared frontend modules, e.g. /static/headcount-api.js.
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
