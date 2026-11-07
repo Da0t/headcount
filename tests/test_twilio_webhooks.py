@@ -173,3 +173,14 @@ def test_twiml_helpers():
     from app.twilio_voice import say_twiml
     xml = say_twiml("Hola", "es")
     assert 'language="es-MX"' in xml and "<Hangup" in xml
+
+
+def test_api_key_client_and_no_token_skips_validation():
+    from app.twilio_voice import TwilioClient, signature_ok
+    s = load_settings(twilio_account_sid="AC123", twilio_auth_token="", twilio_api_key_sid="SK123",
+                      twilio_api_key_secret="sekret", twilio_from_number="+15555550100", public_base_url=BASE,
+                      twilio_validate=True, phones_file="__none__.json")
+    assert s.twilio_ready
+    c = TwilioClient(s).client
+    assert c.username == "SK123" and c.password == "sekret" and c.account_sid == "AC123"
+    assert signature_ok(s, "/twilio/status/1?attempt=1", {}, "anything") is True

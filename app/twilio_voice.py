@@ -22,7 +22,12 @@ class TwilioClient:
         from twilio.rest import Client
 
         self.settings = settings
-        self.client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+        if settings.twilio_api_key_ready:
+            # API key (SK...) + secret, scoped to the account SID
+            self.client = Client(settings.twilio_api_key_sid, settings.twilio_api_key_secret,
+                                 settings.twilio_account_sid)
+        else:
+            self.client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
 
     def place_call(self, r: Resident, attempt: int) -> str:
         base = self.settings.public_base_url
@@ -72,7 +77,11 @@ def say_twiml(text: str, lang: str) -> str:
 
 
 def signature_ok(settings, path_and_query: str, params: dict, signature: str) -> bool:
-    """Check X-Twilio-Signature against PUBLIC_BASE_URL + path. Off when TWILIO_VALIDATE=0 or there is no token."""
+    """Check X-Twilio-Signature against PUBLIC_BASE_URL + path.
+
+    Off when TWILIO_VALIDATE=0 or there is no auth token. Twilio signs webhooks with the account auth token,
+    so an API key secret cannot validate them: with only an API key, validation is effectively off.
+    """
     if not settings.twilio_validate or not settings.twilio_auth_token:
         return True
     url = settings.public_base_url + path_and_query

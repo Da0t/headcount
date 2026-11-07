@@ -34,9 +34,10 @@ def _build_twilio(s) -> Optional[TwilioClient]:
         except Exception as exc:  # noqa: BLE001
             log.error("Twilio client could not start (%s). Running fully simulated.", exc)
             return None
-    if s.twilio_account_sid or s.twilio_auth_token:
+    if s.twilio_account_sid or s.twilio_auth_token or s.twilio_api_key_sid or s.twilio_api_key_secret:
+        creds = bool(s.twilio_auth_token) or s.twilio_api_key_ready
         missing = [name for name, val in [("TWILIO_ACCOUNT_SID", s.twilio_account_sid),
-                                           ("TWILIO_AUTH_TOKEN", s.twilio_auth_token),
+                                           ("TWILIO_AUTH_TOKEN or TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET", creds),
                                            ("TWILIO_FROM_NUMBER", s.twilio_from_number),
                                            ("PUBLIC_BASE_URL", s.public_base_url)] if not val]
         log.warning("Twilio credentials found but %s missing. Real calls are OFF; everything runs simulated.",
@@ -45,6 +46,9 @@ def _build_twilio(s) -> Optional[TwilioClient]:
 
 
 twilio = _build_twilio(settings)
+if twilio is not None and settings.twilio_validate and not settings.twilio_auth_token:
+    log.warning("TWILIO_VALIDATE=1 but no TWILIO_AUTH_TOKEN: webhook signatures cannot be checked with an API key "
+                "secret, so validation is OFF.")
 engine = Engine(settings, load_residents(settings), twilio)
 app = FastAPI(title="Headcount")
 
