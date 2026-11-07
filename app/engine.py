@@ -149,7 +149,9 @@ class Engine:
         self._schedule(rid, "ring", self.settings.ring_timeout, self.no_answer, rid, attempt, "no answer")
         step = self._step(r, attempt)
         if self.autopilot and step is not None and step != "no_answer":
-            self._schedule(rid, "auto", random.uniform(2.5, 6), self._autopilot, rid, attempt, step)
+            # pick up before the ring timeout, even if someone shortens HEADCOUNT_RING_TIMEOUT for a demo
+            delay = min(random.uniform(2.5, 6), self.settings.ring_timeout * 0.6)
+            self._schedule(rid, "auto", delay, self._autopilot, rid, attempt, step)
 
     @staticmethod
     def _step(r: Resident, attempt: int):
