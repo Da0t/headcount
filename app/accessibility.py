@@ -1,10 +1,9 @@
-"""Accessible evacuation help: which vehicle to send and which shelter fits. Plain rules, no AI.
+"""Build rule-based transport and shelter recommendations for a resident.
 
-Derived from the resident's profile (oxygen, mobility, bedridden, hearing) and, once they answer,
-their reading (answer, mobility_help, medical_equipment, pets, people_with_them).
-
-ALL SHELTERS BELOW ARE FICTIONAL demo data for the fictional "Tierrasanta, San Diego (demo zone)". They are not
-real facilities and must never be shown to anyone as real evacuation guidance.
+The recommendations use the resident profile and, when available, their call
+reading. They do not decide who receives help or trigger a real dispatch.
+Every shelter below is fictional demo data for Tierrasanta, San Diego. None is
+a real facility or real evacuation guidance.
 """
 from __future__ import annotations
 
@@ -73,8 +72,12 @@ def _pets(r: Resident) -> tuple[list[str], list[str]]:
 
 
 def pick_shelter(required: set[str]) -> tuple[Optional[Shelter], list[str]]:
-    """Shelter meeting the most required capabilities; ties go to the one with the fewest extras,
-    so scarce medical beds and oxygen power are kept for the people who need them."""
+    """Choose the demo shelter covering the most required capabilities.
+
+    Ties prefer the shelter with fewer capabilities beyond those required; the
+    returned reasons list capabilities met and unmet. This is a recommendation,
+    not a reservation or dispatch.
+    """
     if not SHELTERS:
         return None, []
     best = min(SHELTERS, key=lambda s: (-len(required & s.caps()), len(s.caps() - required), SHELTERS.index(s)))
@@ -88,7 +91,12 @@ def pick_shelter(required: set[str]) -> tuple[Optional[Shelter], list[str]]:
 
 
 def assist(r: Resident) -> dict:
-    """{"transport", "shelter", "shelter_why", "needs"}. Never decides who gets help, only what kind."""
+    """Return a rule-based assistance plan for one resident.
+
+    The result includes transport, shelter, reasons, responder needs, and
+    shelter coordinates. It describes what kind of help may fit, not whether
+    the resident receives help or whether anyone is dispatched.
+    """
     reading = r.reading
     answer = reading.answer if reading else None
     equipment = [e.lower() for e in (reading.medical_equipment if reading else [])]

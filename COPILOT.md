@@ -18,6 +18,7 @@ How to add an entry:
 | 13:25 PT | `app/engine.py`, async task scheduling review | Review task cancellation, stale attempts, reset, autopilot, and family texts for races. | Found a stale-attempt collision after reset, in-flight Twilio work that can outlive reset, and scheduled autopilot tasks that can continue after autopilot is switched off. | No application code changed; recorded findings with severity and line references under Solve. |
 | 13:32 PT | `app/priority.py`, `COPILOT.md` | Explain the priority formula with a worked example and record the engine-review fixes. | Added module and function docstrings, updated Solve and Document, and logged this work. | Kept the change to documentation only; no application logic changed. |
 | 13:50 PT | `app/seed.py`, campaign tests | Expand the fictional demo zone to 20 residents and update the campaign totals. | Added ten varied fictional residents covering every outcome with keyword-classifiable scripts, and updated the old total assertions. | Kept residents 1 to 10 unchanged; expected totals are 7 OUT, 6 NEEDS_RIDE, 2 NEEDS_MEDICAL, 2 STAYING, 2 WELFARE_CHECK, and 1 NEEDS_CALLBACK. |
+| 14:30 PT | `docs/ARCHITECTURE.md`, `app/accessibility.py`, `app/main.py` | Document the verified outbound and inbound call flows, state statuses, AI and rules, map data, and file layout; clarify the accessibility and inbound-step docstrings. | Wrote a plain-language architecture guide and expanded the requested docstrings without changing application logic. | Kept the guide grounded in the routes and engine behavior; identified all place and shelter data as fictional Tierrasanta demo data. |
 
 ## Learn
 *Where Copilot helped us understand something new: an API, a library, an unfamiliar error.*
@@ -41,6 +42,7 @@ How to add an entry:
 *Where Copilot helped write docs, docstrings, comments, or this README.*
 
 - Added the module and `score()` docstrings in `app/priority.py`, explaining the priority formula, its factors, and a worked example.
+- Added `docs/ARCHITECTURE.md` (outbound and inbound lifecycle, status transitions, Gemini versus plain rules, map data flow, and file map) and clarified docstrings for accessibility assistance, shelter choice, and `_inbound_step`.
 
 ## What we learned about working with Copilot
 

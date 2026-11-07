@@ -372,9 +372,13 @@ async def twilio_incoming(request: Request):
 
 
 async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech: str) -> dict:
-    """One step of the structured inbound call, shared by the Twilio webhook and the free simulator.
+    """Process one of the three inbound questions for Twilio or the simulator.
 
-    Returns {"ask": prompt, "step": K, "reask": bool} for the next question, or {"done": True, "say", "reading"}.
+    Step 1 may record a keypad answer; speech from all steps is classified
+    together at step 3, with the keypad answer taking precedence. A first
+    unclear result restarts the questions; the engine handles the next result.
+    Return an ``ask`` payload for the next prompt or a ``done`` payload after
+    recording the reading through the shared engine response path.
     """
     rid = r.id
     lang = scripts.lang(r.lang)
