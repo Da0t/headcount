@@ -16,19 +16,20 @@
   --line-2: #e2e2e5;
   --text: #1c1d21;
   --text-2: #4b4d55;
-  --muted: #8a8d96;
-  --faint: #b4b6bd;
-  --accent: #f26b1d;
-  --accent-hover: #de5c10;
+  --muted: #686b74;
+  --faint: #9a9da5;
+  --accent: #c2410c;
+  --accent-hover: #a8380a;
+  --spark: #f26b1d;
   --accent-soft: #fff1e8;
-  --red: #e5383b;
+  --red: #c62828;
   --red-soft: #fdecec;
   --orange: #f26b1d;
-  --amber: #c98a00;
+  --amber: #8a5d00;
   --amber-soft: #fdf5e1;
-  --green: #1f9d55;
+  --green: #18794a;
   --green-soft: #e9f7ef;
-  --blue: #2f6fe4;
+  --blue: #2559c7;
   --blue-soft: #eaf1fd;
   --gray: #6b6e78;
   --violet: #7b52d6;
@@ -46,6 +47,8 @@ a { color: inherit; text-decoration: none; }
 a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
 }
+.skip { position: absolute; left: 8px; top: -60px; z-index: 10; background: var(--text); color: #fff; padding: 8px 12px; border-radius: 8px; }
+.skip:focus { top: 8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -111,7 +114,7 @@ main { min-width: 0; padding: 16px 24px 16px; }
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; height: 34px;
 }
 .cta:hover { background: var(--accent-hover); }
-.cta[disabled] { background: #f6b48c; cursor: default; }
+.cta[disabled] { background: #b8735a; cursor: default; }
 .cta svg.i { stroke-width: 2.2; width: 15px; height: 15px; }
 
 /* KPI strip */
@@ -127,7 +130,7 @@ main { min-width: 0; padding: 16px 24px 16px; }
 .delta.bad { color: var(--red); }
 .delta.flat { color: var(--faint); }
 .spark { width: 84px; height: 28px; }
-.spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark polyline { fill: none; stroke: var(--spark); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .spark .area { fill: var(--accent-soft); stroke: none; }
 .kpi.zero-good .num { color: var(--green); }
 
@@ -177,23 +180,25 @@ main { min-width: 0; padding: 16px 24px 16px; }
 [aria-pressed="true"] .switch::after { transform: translateX(12px); }
 
 /* table: fixed layout, single-line rows */
-.table-wrap { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.table-wrap { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; overflow-x: hidden; max-height: calc(100vh - 262px); min-height: 260px; }
+thead th { position: sticky; top: 0; z-index: 1; }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-col.c-rank { width: 38px; }
-col.c-res { width: 190px; }
+col.c-rank { width: 44px; }
+col.c-res { width: 214px; }
 col.c-status { width: 152px; }
 col.c-prio { width: 100px; }
 col.c-why { width: 160px; }
 col.c-calls { width: 58px; }
 col.c-family { width: 100px; }
 col.c-engine { width: 82px; }
+col.c-assist { width: 176px; }
 col.c-updated { width: 70px; }
 thead th {
   text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
   padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #fcfcfd;
 }
 tbody td {
-  height: 50px; padding: 0 10px; border-bottom: 1px solid var(--line); vertical-align: middle;
+  height: 40px; padding: 0 10px; border-bottom: 1px solid var(--line); vertical-align: middle;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 tbody tr:last-child td { border-bottom: 0; }
@@ -208,6 +213,9 @@ td.c-rank { color: var(--muted); font-weight: 500; }
 .res-meta { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
 .lang { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--muted); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
 .lang.real { color: var(--blue); border-color: #c9dafb; }
+.lang.text { color: var(--violet); border-color: #d9cdf5; }
+.assist { color: var(--text-2); font-size: 12.5px; }
+.assist .ic { margin-right: 5px; color: var(--accent); }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; color: var(--gray); max-width: 100%;
@@ -249,8 +257,8 @@ footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
 body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: grayscale(.7); }
 
 /* ------------------------------------------------------------------ responsive */
-@media (max-width: 1519px) { .col-updated { display: none; } }
-@media (max-width: 1279px) { .col-why { display: none; } }
+@media (max-width: 1519px) { .col-updated, .col-why { display: none; } }
+@media (max-width: 1279px) { .col-family { display: none; } }
 @media (max-width: 1100px) { .col-engine { display: none; } }
 @media (max-width: 980px) {
   .app { display: flex; flex-direction: column; }
@@ -268,7 +276,8 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   .banner .txt { white-space: normal; }
   .toolbar { margin-left: 0; width: 100%; }
   /* phone table: rank | name | status | priority */
-  .col-note, .col-calls, .col-family { display: none; }
+  .col-note, .col-calls, .col-family, .col-assist { display: none; }
+  .table-wrap { max-height: none; overflow: visible; }
   col.c-res { width: auto; }
   col.c-status { width: 110px; }
   col.c-prio { width: 52px; }
@@ -295,6 +304,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
 </style>
 </head>
 <body>
+<a class="skip" href="#rows-table">Skip to resident list</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></symbol>
   <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.5h2"/></symbol>
@@ -377,16 +387,16 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     </div>
 
     <div class="table-wrap">
-      <table aria-label="Residents by priority, highest first. Select a row for details.">
+      <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row for details.">
         <colgroup>
           <col class="c-rank"><col class="c-res"><col class="c-status"><col class="c-prio"><col class="c-why col-why">
-          <col class="c-note col-note"><col class="c-calls col-calls"><col class="c-family col-family"><col class="c-engine col-engine"><col class="c-updated col-updated">
+          <col class="c-note col-note"><col class="c-assist col-assist"><col class="c-calls col-calls"><col class="c-family col-family"><col class="c-engine col-engine"><col class="c-updated col-updated">
         </colgroup>
         <thead><tr>
           <th>#</th><th>Resident</th><th>Status</th><th>Priority</th><th class="col-why">Why</th>
-          <th class="col-note">Responder note</th><th class="col-calls">Calls</th><th class="col-family">Family</th><th class="col-engine">Heard by</th><th class="col-updated">Updated</th>
+          <th class="col-note">Responder note</th><th class="col-assist">Assist</th><th class="col-calls">Calls</th><th class="col-family">Family</th><th class="col-engine">Heard by</th><th class="col-updated">Updated</th>
         </tr></thead>
-        <tbody id="rows"><tr class="table-empty"><td colspan="10">Waiting for data…</td></tr></tbody>
+        <tbody id="rows"><tr class="table-empty"><td colspan="11">Waiting for data…</td></tr></tbody>
       </table>
     </div>
 
@@ -590,6 +600,24 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     for (let i = 0; i < 5; i++) h += '<i class="' + (i < on ? "on" : "") + '"></i>';
     return h + '</span><span class="n">' + esc(score) + "</span>";
   }
+  // resident.assist = {transport, shelter, shelter_why[], needs[]}; may be missing on older servers
+  const shelterName = (s) => String(s || "").replace(/\s*\(demo\)\s*$/i, "");
+  function assistShort(a) {
+    if (!a || (!a.transport && !a.shelter)) return '<span class="dash">—</span>';
+    const parts = [];
+    if (a.transport) parts.push(a.transport.charAt(0).toUpperCase() + a.transport.slice(1));
+    if (a.shelter) parts.push(shelterName(a.shelter));
+    return '<span class="assist"><span class="ic" aria-hidden="true">' + (a.transport ? "➜" : "⌂") + "</span>" + esc(parts.join(" → ")) + "</span>";
+  }
+  function assistLong(a) {
+    if (!a) return "";
+    const out = [];
+    if (a.transport) out.push("Transport: " + a.transport);
+    if (a.shelter) out.push("Shelter: " + a.shelter);
+    if (a.shelter_why && a.shelter_why.length) out.push("Why: " + a.shelter_why.join(", "));
+    if (a.needs && a.needs.length) out.push("Needs: " + a.needs.join("; "));
+    return out.join(". ");
+  }
   function rowHtml(r, rank, maxAttempts) {
     const rd = r.reading || null;
     const st = KNOWN.has(r.status) ? r.status : "PENDING";
@@ -614,11 +642,13 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     return (
       '<td class="c-rank">' + rank + "</td>" +
       '<td title="' + esc(r.name + ", " + r.age + " · " + (LANG_NAME[r.lang] || r.lang || "") + " · " + r.address) + '"><span class="res-name">' + esc(r.name) + '</span><span class="res-meta">' + esc(r.age) + "</span>" +
-        '<span class="lang">' + esc((r.lang || "").toUpperCase()) + "</span>" + (r.real_phone ? '<span class="lang real">REAL</span>' : "") + "</td>" +
+        '<span class="lang">' + esc((r.lang || "").toUpperCase()) + "</span>" + (r.contact_mode === "text" ? '<span class="lang text" title="Checks in by text message">TEXT</span>' : "") +
+        (r.real_phone ? '<span class="lang real">REAL</span>' : "") + "</td>" +
       '<td><span class="pill st-' + st + (st === "CALLING" ? " calling" : "") + '"><span class="d"></span>' + esc(LABEL[st]) + "</span></td>" +
       '<td><div class="prio" title="Priority score ' + esc(r.score) + '">' + prioBar(r.score || 0) + "</div></td>" +
       '<td class="col-why" title="' + esc(why.join(", ")) + '">' + whyHtml + "</td>" +
       '<td class="col-note" title="' + esc(note + (rd && rd.quote && rd.responder_note ? "  “" + rd.quote + "”" : "")) + '">' + noteHtml + "</td>" +
+      '<td class="col-assist" title="' + esc(assistLong(r.assist)) + '">' + assistShort(r.assist) + "</td>" +
       '<td class="col-calls"><span class="calls">' + esc(r.attempts || 0) + "/" + esc(max) + "</span></td>" +
       '<td class="col-family" title="' + esc(r.family || "") + '">' + fam + "</td>" +
       '<td class="col-engine">' + engineTag(rd && rd.engine) + "</td>" +
@@ -638,7 +668,14 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     add("Calls", esc(r.attempts || 0) + " of " + esc(Math.max(maxAttempts || 3, r.attempts || 0)));
     add("Family", esc(r.family || "not texted yet"));
     add("Heard by", rd && rd.engine ? esc(rd.engine) : "");
-    return '<td colspan="10"><dl>' + d.join("") + "</dl></td>";
+    add("Contact", r.contact_mode === "text" ? "Text message (SMS check-in)" : "");
+    const a = r.assist;
+    if (a) {
+      add("Transport", a.transport ? esc(a.transport) : "");
+      add("Shelter", a.shelter ? esc(a.shelter) + (a.shelter_why && a.shelter_why.length ? ' <span class="muted">\u00b7 ' + esc(a.shelter_why.join(", ")) + "</span>" : "") : (a.shelter_why && a.shelter_why.length ? esc(a.shelter_why.join(", ")) : ""));
+      add("Bring", a.needs && a.needs.length ? esc(a.needs.join("; ")) : "");
+    }
+    return '<td colspan="11"><dl>' + d.join("") + "</dl></td>";
   }
   function renderTable(st) {
     const all = st.residents || [];   // already sorted by the server: never re-sort
@@ -658,7 +695,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     });
     const body = $("rows");
     if (!rows.length) {
-      body.innerHTML = '<tr class="table-empty"><td colspan="10">' + (all.length ? "No residents match this view." : "No residents in this zone.") + "</td></tr>";
+      body.innerHTML = '<tr class="table-empty"><td colspan="11">' + (all.length ? "No residents match this view." : "No residents in this zone.") + "</td></tr>";
       return;
     }
     // keyed update: reuse rows, only rewrite the ones that changed
