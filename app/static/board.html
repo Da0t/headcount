@@ -38,6 +38,7 @@
   --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.45;
@@ -392,6 +393,51 @@ body.fs tbody td { height: 44px; font-size: 15px; }
 body.fs .fs-show { display: inline-flex; }
 body.fs .fs-hide { display: none; }
 body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent); }
+/* ------------------------------------------------------------------ map */
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 42%; gap: 8px; margin-top: 8px; align-items: stretch; }
+.work .table-wrap { margin-top: 0; }
+body.view-table .work { grid-template-columns: minmax(0, 1fr); }
+body.view-table .map-card { display: none; }
+body.view-map .work { grid-template-columns: minmax(0, 1fr); }
+body.view-map .work .table-wrap { display: none; }
+body.view-split .col-assist, body.view-split .col-family, body.view-split .col-calls { display: none; }
+body.fs.view-split .work { grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); }
+.map-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-height: 260px; height: calc(100vh - 262px); background: #f3f3f1; position: relative; }
+body.fs .map-card { height: calc(100vh - 236px); }
+.map { flex: 1; min-height: 0; position: relative; }
+.map svg.fallback { width: 100%; height: 100%; display: block; }
+.map-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+.legend {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2; background: rgba(255, 255, 255, .94); border: 1px solid var(--line);
+  border-radius: 9px; padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-2); max-width: calc(100% - 16px);
+  box-shadow: var(--shadow);
+}
+.legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.legend svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.map-title { position: absolute; left: 8px; top: 8px; z-index: 2; background: rgba(255, 255, 255, .94); border: 1px solid var(--line); border-radius: 9px; padding: 4px 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mk { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: #fff; border: 1.5px solid var(--text-2); color: var(--text); box-shadow: var(--shadow); }
+.mk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mk.base { background: var(--red); border-color: var(--red); color: #fff; }
+.mk-label { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--text-2); background: rgba(255, 255, 255, .85); padding: 0 4px; border-radius: 4px; }
+.zone-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b8480f; background: rgba(255, 255, 255, .8); padding: 1px 6px; border-radius: 4px; }
+.view-switch { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; height: 32px; }
+.view-switch button { border: 0; background: #fff; padding: 0 10px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; }
+.view-switch button + button { border-left: 1px solid var(--line-2); }
+.view-switch button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+/* svg fallback */
+.fb-zone { fill: rgba(242, 107, 29, .12); stroke: #f26b1d; stroke-width: 2; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; }
+.fb-route { fill: none; stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.fb-pin { cursor: pointer; stroke: #fff; stroke-width: 2; }
+.fb-pin:hover { stroke: var(--text); }
+.fb-pulse { fill: none; stroke: var(--blue); stroke-width: 2; animation: ring 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ring { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+.fb-vehicle { fill: var(--text); stroke: #fff; stroke-width: 1.5; }
+@media (max-width: 980px) {
+  .work { grid-template-columns: minmax(0, 1fr) !important; }
+  .map-card { height: 340px; }
+  body.view-split .col-calls { display: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -415,6 +461,7 @@ body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent)
   <symbol id="a-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-exitfull" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
+  <symbol id="i-station" viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/><path d="M12 7.5v3M10.5 9h3"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></symbol>
 </svg>
 
@@ -483,20 +530,27 @@ body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent)
       </div>
       <div class="toolbar">
         <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">Search residents</span><input id="q" type="search" placeholder="Search name, address, note" autocomplete="off"></label>
+        <div class="view-switch" role="group" aria-label="Layout"><button type="button" data-view="split" aria-pressed="true">Split</button><button type="button" data-view="table" aria-pressed="false">Table</button><button type="button" data-view="map" aria-pressed="false">Map</button></div>
         <button class="ghost" id="autopilot" type="button" aria-pressed="false" title="When on, simulated residents answer by themselves"><span class="switch" aria-hidden="true"></span>Autopilot</button>
         <button class="ghost" id="reset" type="button"><svg class="i"><use href="#i-reset"/></svg>Reset</button>
         <a class="ghost outline" id="phoneBtn" href="/phone" target="_blank" rel="noopener"><svg class="i"><use href="#i-phone"/></svg>Play a resident</a>
       </div>
     </div>
 
+    <div class="work" id="work">
     <div class="table-wrap">
-      <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row to open the resident profile.">
-        <thead><tr>
-          <th class="c-rank">#</th><th class="c-res">Resident</th><th class="c-status">Status</th><th class="c-prio">Priority</th><th class="c-why col-why">Why</th>
-          <th class="c-note col-note">Responder note</th><th class="c-assist col-assist">Assist</th><th class="c-calls col-calls">Calls</th><th class="c-family col-family">Family</th><th class="c-updated col-updated">Updated</th>
-        </tr></thead>
-        <tbody id="rows"><tr class="table-empty"><td colspan="10">Waiting for data…</td></tr></tbody>
-      </table>
+        <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row to open the resident profile.">
+          <thead><tr>
+            <th class="c-rank">#</th><th class="c-res">Resident</th><th class="c-status">Status</th><th class="c-prio">Priority</th><th class="c-why col-why">Why</th>
+            <th class="c-note col-note">Responder note</th><th class="c-assist col-assist">Assist</th><th class="c-calls col-calls">Calls</th><th class="c-family col-family">Family</th><th class="c-updated col-updated">Updated</th>
+          </tr></thead>
+          <tbody id="rows"><tr class="table-empty"><td colspan="10">Waiting for data…</td></tr></tbody>
+        </table>
+      </div>
+      <section class="map-card" aria-label="Zone map">
+        <div class="map-title">Zone map</div>
+        <div class="map" id="map"><div class="map-empty">Loading map…</div></div>
+      </section>
     </div>
 
     <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
@@ -922,6 +976,7 @@ body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent)
     renderTable(st);
     renderFeed(st);
     renderDrawer(st);
+    updateMap(st);
   }
 
   // ------------------------------------------------------------------ connection + polling
@@ -1189,6 +1244,202 @@ body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent)
     openDrawer(rid, $("callMe"));
     placeCall(false);   // real phones stop at the confirm step
   });
+
+  // ------------------------------------------------------------------ zone map (Mapbox when a token is set, SVG fallback otherwise)
+  const MAPBOX_VER = "3.6.0";
+  const HELP_STATUSES = new Set(["NEEDS_RIDE", "NEEDS_MEDICAL", "WELFARE_CHECK"]);
+  let mapCfg = null, mapMode = null, mb = null, mbReady = false, mapState = { routes: [], legs: [] };
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function statusColor(s) {
+    return ({ WELFARE_CHECK: cssVar("--red"), NEEDS_MEDICAL: cssVar("--red"), NEEDS_RIDE: "#f26b1d", NEEDS_CALLBACK: cssVar("--amber"),
+      STAYING: cssVar("--gray"), OUT: cssVar("--green"), CALLING: cssVar("--blue"), IN_CALL: cssVar("--blue") })[s] || "#a3a6ad";
+  }
+  const hasXY = (r) => typeof r.lng === "number" && typeof r.lat === "number" && (r.lng || r.lat);
+  function shelterXY(r) {
+    const a = r.assist;
+    if (!a || !a.shelter) return null;
+    if (typeof a.shelter_lng === "number" && typeof a.shelter_lat === "number") return [a.shelter_lng, a.shelter_lat];
+    const s = mapCfg && (mapCfg.shelters || []).find((x) => x.name === a.shelter);
+    return s ? [s.lng, s.lat] : null;
+  }
+  function geo(st) {
+    const rows = ((st && st.residents) || []).filter(hasXY);
+    const base = mapCfg && mapCfg.base ? [mapCfg.base.lng, mapCfg.base.lat] : null;
+    const pins = rows.map((r) => ({ id: r.id, name: r.name, status: r.status, xy: [r.lng, r.lat], color: statusColor(r.status),
+      calling: r.status === "CALLING" || r.status === "IN_CALL", out: r.status === "OUT" }));
+    const routes = [], legs = [];
+    rows.filter((r) => HELP_STATUSES.has(r.status)).forEach((r) => {
+      const color = statusColor(r.status), sh = shelterXY(r);
+      if (base) { routes.push({ a: base, b: [r.lng, r.lat], color, kind: "pickup" }); legs.push({ a: base, b: [r.lng, r.lat], seed: r.id }); }
+      if (sh) routes.push({ a: [r.lng, r.lat], b: sh, color, kind: "shelter" });
+    });
+    return { pins, routes, legs, base };
+  }
+  const LEGEND = '<div class="legend" aria-hidden="true"><span><i style="background:' + "var(--blue)" + '"></i>Calling</span><span><i style="background:var(--red)"></i>Medical / welfare</span>' +
+    '<span><i style="background:#f26b1d"></i>Ride</span><span><i style="background:var(--amber)"></i>Call back</span><span><i style="background:var(--green)"></i>Out</span>' +
+    '<span><i style="background:#a3a6ad"></i>Not reached</span><span><svg><use href="#a-home"/></svg>Shelter</span><span><svg><use href="#i-station"/></svg>Fire base</span></div>';
+
+  async function initMap() {
+    try { mapCfg = await api.getMap(); } catch (e) { mapCfg = null; }
+    const box = $("map");
+    if (!mapCfg) { box.innerHTML = '<div class="map-empty">Map data is not available from this server.</div>'; return; }
+    box.insertAdjacentHTML("afterend", LEGEND);
+    if (mapCfg.token) {
+      try { await loadMapbox(); setupMapbox(); return; } catch (e) { /* fall through to the SVG map */ }
+    }
+    mapMode = "svg";
+    if (last) renderSvgMap(last);
+  }
+  function loadMapbox() {
+    if (window.mapboxgl) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const css = document.createElement("link");
+      css.rel = "stylesheet"; css.href = "https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_VER + "/mapbox-gl.css";
+      document.head.appendChild(css);
+      const js = document.createElement("script");
+      js.src = "https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_VER + "/mapbox-gl.js";
+      js.onload = () => (window.mapboxgl ? resolve() : reject(new Error("no mapboxgl")));
+      js.onerror = () => reject(new Error("mapbox load failed"));
+      setTimeout(() => reject(new Error("mapbox timeout")), 9000);
+      document.head.appendChild(js);
+    });
+  }
+  function el(html) { const d = document.createElement("div"); d.innerHTML = html; return d.firstElementChild; }
+  function setupMapbox() {
+    mapMode = "mapbox";
+    window.mapboxgl.accessToken = mapCfg.token;
+    try {
+      mb = new window.mapboxgl.Map({ container: "map", style: "mapbox://styles/mapbox/light-v11", center: mapCfg.center, zoom: mapCfg.zoom || 13, cooperativeGestures: false });
+    } catch (e) { mapMode = "svg"; renderSvgMap(last); return; }
+    mb.addControl(new window.mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    mb.on("error", () => { if (!mbReady) { try { mb.remove(); } catch (e) { /* ignore */ } mb = null; mapMode = "svg"; if (last) renderSvgMap(last); } });
+    mb.on("load", () => {
+      const empty = { type: "FeatureCollection", features: [] };
+      mb.addSource("zone", { type: "geojson", data: { type: "Feature", properties: {}, geometry: mapCfg.zone } });
+      mb.addLayer({ id: "zone-fill", type: "fill", source: "zone", paint: { "fill-color": "#f26b1d", "fill-opacity": 0.12 } });
+      mb.addLayer({ id: "zone-line", type: "line", source: "zone", paint: { "line-color": "#f26b1d", "line-width": 2, "line-dasharray": [2, 2] } });
+      ["routes", "pins", "vehicles"].forEach((id) => mb.addSource(id, { type: "geojson", data: empty }));
+      mb.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": ["get", "color"], "line-width": 2.5, "line-opacity": 0.75, "line-dasharray": [1.5, 1.5] } });
+      mb.addLayer({ id: "pulse", type: "circle", source: "pins", filter: ["==", ["get", "calling"], 1], paint: { "circle-radius": 10, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": cssVar("--blue"), "circle-stroke-width": 2, "circle-stroke-opacity": 0.8 } });
+      mb.addLayer({ id: "pins", type: "circle", source: "pins", paint: { "circle-radius": 7.5, "circle-color": ["get", "color"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+      mb.addLayer({ id: "checks", type: "symbol", source: "pins", filter: ["==", ["get", "out"], 1], layout: { "text-field": "✓", "text-size": 11, "text-allow-overlap": true, "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"] }, paint: { "text-color": "#fff" } });
+      mb.addLayer({ id: "vehicles", type: "circle", source: "vehicles", paint: { "circle-radius": 5, "circle-color": "#1c1d21", "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
+      // zone label at the top of the polygon
+      const ring = (mapCfg.zone.coordinates || [[]])[0];
+      const top = ring.reduce((a, b) => (b[1] > a[1] ? b : a), ring[0] || mapCfg.center);
+      new window.mapboxgl.Marker({ element: el('<div class="zone-label">Evacuation zone</div>'), anchor: "bottom" }).setLngLat(top).addTo(mb);
+      (mapCfg.shelters || []).forEach((s) => {
+        new window.mapboxgl.Marker({ element: el('<div class="mk" title="' + esc(s.name) + '"><svg aria-hidden="true"><use href="#a-home"/></svg><span class="mk-label">' + esc(s.short || shelterName(s.name)) + "</span></div>") })
+          .setLngLat([s.lng, s.lat]).addTo(mb);
+      });
+      if (mapCfg.base) {
+        new window.mapboxgl.Marker({ element: el('<div class="mk base" title="' + esc(mapCfg.base.name) + '"><svg aria-hidden="true"><use href="#i-station"/></svg><span class="mk-label">Fire base</span></div>') })
+          .setLngLat([mapCfg.base.lng, mapCfg.base.lat]).addTo(mb);
+      }
+      mb.on("click", "pins", (e) => { const f = e.features && e.features[0]; if (f) openDrawer(Number(f.properties.id)); });
+      mb.on("mouseenter", "pins", () => { mb.getCanvas().style.cursor = "pointer"; });
+      mb.on("mouseleave", "pins", () => { mb.getCanvas().style.cursor = ""; });
+      mbReady = true;
+      if (last) updateMap(last);
+      if (!reduceMotion) requestAnimationFrame(animateMap);
+    });
+  }
+  const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
+  function vehiclePos(leg, t) { return lerp(leg.a, leg.b, reduceMotion ? 1 : ((t / 6000) + (leg.seed % 7) / 7) % 1); }
+  let lastVeh = 0;
+  function animateMap(t) {
+    if (!mb || !mbReady) return;
+    const phase = (t % 1400) / 1400;
+    mb.setPaintProperty("pulse", "circle-radius", 8 + 12 * phase);
+    mb.setPaintProperty("pulse", "circle-stroke-opacity", 0.9 * (1 - phase));
+    if (t - lastVeh > 60) {
+      lastVeh = t;
+      mb.getSource("vehicles").setData({ type: "FeatureCollection", features: mapState.legs.map((l) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: vehiclePos(l, t) } })) });
+    }
+    requestAnimationFrame(animateMap);
+  }
+  function updateMap(st) {
+    if (mapMode === "svg") { renderSvgMap(st); return; }
+    if (mapMode !== "mapbox" || !mbReady) return;
+    const g = geo(st);
+    mapState = g;
+    mb.getSource("pins").setData({ type: "FeatureCollection", features: g.pins.map((p) => ({ type: "Feature",
+      properties: { id: p.id, color: p.color, calling: p.calling ? 1 : 0, out: p.out ? 1 : 0 }, geometry: { type: "Point", coordinates: p.xy } })) });
+    mb.getSource("routes").setData({ type: "FeatureCollection", features: g.routes.map((r) => ({ type: "Feature", properties: { color: r.color },
+      geometry: { type: "LineString", coordinates: [r.a, r.b] } })) });
+    if (reduceMotion) mb.getSource("vehicles").setData({ type: "FeatureCollection", features: g.legs.map((l) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: l.b } })) });
+  }
+  // SVG fallback: same layers, projected into a box
+  let svgAnim = null;
+  function renderSvgMap(st) {
+    if (!mapCfg || !st) return;
+    const g = geo(st);
+    const ring = (mapCfg.zone && mapCfg.zone.coordinates && mapCfg.zone.coordinates[0]) || [];
+    const all = ring.concat(g.pins.map((p) => p.xy), (mapCfg.shelters || []).map((s) => [s.lng, s.lat]), g.base ? [g.base] : []);
+    if (!all.length) return;
+    const k = Math.cos((mapCfg.center[1] || 33) * Math.PI / 180);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    all.forEach(([x, y]) => { minX = Math.min(minX, x * k); maxX = Math.max(maxX, x * k); minY = Math.min(minY, y); maxY = Math.max(maxY, y); });
+    const pad = 0.08 * Math.max(maxX - minX, maxY - minY), W = 1000;
+    const H = Math.round(W * (maxY - minY + 2 * pad) / (maxX - minX + 2 * pad));
+    const P = ([x, y]) => [((x * k - minX + pad) / (maxX - minX + 2 * pad)) * W, ((maxY - y + pad) / (maxY - minY + 2 * pad)) * H];
+    const pts = (arr) => arr.map((c) => P(c).map((v) => v.toFixed(1)).join(",")).join(" ");
+    const top = ring.reduce((a, b) => (b[1] > a[1] ? b : a), ring[0] || mapCfg.center);
+    let h = '<svg class="fallback" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Zone map: ' + g.pins.length + ' residents">';
+    h += '<rect width="' + W + '" height="' + H + '" fill="#f3f3f1"/>';
+    if (ring.length) h += '<polygon class="fb-zone" points="' + pts(ring) + '"/>';
+    const [tx, ty] = P(top);
+    h += '<text x="' + tx.toFixed(0) + '" y="' + (ty - 10).toFixed(0) + '" text-anchor="middle" font-size="20" font-weight="700" fill="#b8480f" letter-spacing="2">EVACUATION ZONE</text>';
+    g.routes.forEach((r) => { h += '<line class="fb-route" stroke="' + r.color + '" x1="' + P(r.a)[0].toFixed(1) + '" y1="' + P(r.a)[1].toFixed(1) + '" x2="' + P(r.b)[0].toFixed(1) + '" y2="' + P(r.b)[1].toFixed(1) + '"/>'; });
+    (mapCfg.shelters || []).forEach((s) => {
+      const [x, y] = P([s.lng, s.lat]);
+      h += '<g transform="translate(' + (x - 16).toFixed(1) + "," + (y - 16).toFixed(1) + ')"><title>' + esc(s.name) + '</title><rect width="32" height="32" rx="8" fill="#fff" stroke="#4b4d55" stroke-width="2"/>' +
+        '<use href="#a-home" x="6" y="6" width="20" height="20" fill="none" stroke="#1c1d21" stroke-width="1.8"/></g>' +
+        '<text x="' + x.toFixed(1) + '" y="' + (y + 32).toFixed(1) + '" text-anchor="middle" font-size="15" font-weight="600" fill="#4b4d55">' + esc(s.short || shelterName(s.name)) + "</text>";
+    });
+    if (g.base) {
+      const [x, y] = P(g.base);
+      h += '<g transform="translate(' + (x - 16).toFixed(1) + "," + (y - 16).toFixed(1) + ')"><title>' + esc(mapCfg.base.name) + '</title><rect width="32" height="32" rx="8" fill="' + cssVar("--red") + '"/>' +
+        '<use href="#i-station" x="6" y="6" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8"/></g>';
+    }
+    g.pins.forEach((p) => {
+      const [x, y] = P(p.xy);
+      if (p.calling && !reduceMotion) h += '<circle class="fb-pulse" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="13"/>';
+      h += '<circle class="fb-pin" data-id="' + p.id + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="11" fill="' + p.color + '"><title>' + esc(p.name + " · " + (LABEL[p.status] || p.status)) + "</title></circle>";
+      if (p.out) h += '<text x="' + x.toFixed(1) + '" y="' + (y + 5).toFixed(1) + '" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">✓</text>';
+    });
+    h += '<g id="fb-veh"></g></svg>';
+    const box = $("map");
+    if (box._h !== h) { box.innerHTML = h; box._h = h; box._P = P; }
+    mapState = g;
+    if (!svgAnim && g.legs.length) {
+      const tick = (t) => {
+        const vg = document.getElementById("fb-veh");
+        if (vg && $("map")._P) vg.innerHTML = mapState.legs.map((l) => { const [x, y] = $("map")._P(vehiclePos(l, t)); return '<circle class="fb-vehicle" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="7"/>'; }).join("");
+        svgAnim = mapState.legs.length ? requestAnimationFrame(tick) : null;
+      };
+      svgAnim = requestAnimationFrame(tick);
+    }
+  }
+  $("map").addEventListener("click", (ev) => {
+    const pin = ev.target.closest && ev.target.closest(".fb-pin");
+    if (pin) openDrawer(Number(pin.dataset.id), pin);
+  });
+  // view switch: split (default), table, map
+  function setView(v) {
+    document.body.classList.remove("view-split", "view-table", "view-map");
+    document.body.classList.add("view-" + v);
+    document.querySelectorAll(".view-switch button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === v ? "true" : "false"));
+    storeSet("headcount-view", v);
+    if (mb) setTimeout(() => mb.resize(), 50);
+  }
+  function storeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+  function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  document.querySelectorAll(".view-switch button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  setView(["split", "table", "map"].includes(storeGet("headcount-view")) ? storeGet("headcount-view") : "split");
+  document.addEventListener("fullscreenchange", () => { if (mb) setTimeout(() => mb.resize(), 120); });
+  initMap();
 
   // ------------------------------------------------------------------ fullscreen / presentation mode
   const canFs = !!(document.documentElement.requestFullscreen && document.exitFullscreen);
