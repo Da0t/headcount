@@ -14,6 +14,7 @@ How to add an entry:
 |---|---|---|---|---|
 | 13:35 PT | `app/engine.py`, stale Twilio callbacks | Explain how a late webhook from an old call is prevented from overwriting a newer answer. | Traced the per-call attempt token and the guards on call-state updates. | Added the explanation under Learn; no application code changed. |
 | 13:45 PT | `tests/test_classify_extra.py` | Add non-duplicate keyword classification and extraction cases, including difficult English and Spanish wording. | Added phrase, negation, mixed-signal, curly-apostrophe, uppercase, and extraction tests; marked negated English and Spanish injury cases xfail because they currently classify as medical. | Kept the regression cases as xfail and omitted cases already covered in `tests/test_classify.py`. |
+| 14:05 PT | `tests/test_classify_extra.py`, `app/classify.py` | Promote the negated-injury xfails after the classifier fix. | Removed the xfail markers so the Spanish and English negated-injury cases run as regular regression tests. | Kept both cases as normal tests against the fix in `app/classify.py`. |
 
 ## Learn
 *Where Copilot helped us understand something new: an API, a library, an unfamiliar error.*
@@ -23,12 +24,12 @@ How to add an entry:
 ## Solve
 *Where Copilot helped write or fix code. Link the file and say what part was Copilot's.*
 
--
+- The xfail tests found that negated injuries ("No me caí", "haven't fallen or been hurt") were misclassified as NEEDS_MEDICAL by the keyword fallback. The team fixed `app/classify.py`, and I converted the xfails into regular regression tests.
 
 ## Test
 *Where Copilot helped write or extend tests, or found an edge case we missed.*
 
-- Added `tests/test_classify_extra.py` for tricky English and Spanish wording, negations, mixed signals, curly apostrophes, uppercase input, and companion, pet, and medical-equipment extraction. Known false medical matches for negated English and Spanish injuries are kept as xfails; existing cases were not repeated.
+- Added `tests/test_classify_extra.py` for tricky English and Spanish wording, negations, mixed signals, curly apostrophes, uppercase input, and companion, pet, and medical-equipment extraction. The negated English and Spanish injury cases were converted from xfails into regular regression tests after the classifier fix; existing cases were not repeated.
 
 ## Document
 *Where Copilot helped write docs, docstrings, comments, or this README.*

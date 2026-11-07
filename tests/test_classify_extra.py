@@ -20,12 +20,10 @@ def test_keyword_classify_extra_phrasings(text, expected):
     assert keyword_classify(text).answer == expected
 
 
-@pytest.mark.xfail(reason="Negated 'me caí' still matches the medical keyword 'me cai'.", strict=True)
 def test_negated_spanish_fall_is_not_medical():
     assert keyword_classify("No me caí, solo no puedo manejar.").answer == Answer.NEEDS_RIDE
 
 
-@pytest.mark.xfail(reason="Negated 'been hurt' still matches the medical keyword 'hurt'.", strict=True)
 def test_negated_english_injury_is_not_medical():
     reading = keyword_classify("I can't get out of my apartment, though I haven't fallen or been hurt.")
     assert reading.answer == Answer.NEEDS_RIDE
