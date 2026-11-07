@@ -189,6 +189,51 @@ def resident_status(name: str) -> str:
     return " ".join(parts)
 
 
+ACCESSIBLE = ("wheelchair", "ambulance")
+
+
+def _shelter_name(shelter) -> str:
+    """assist.shelter may be a plain name or a shelter object."""
+    if isinstance(shelter, dict):
+        return str(shelter.get("name") or shelter.get("id") or "").strip()
+    return str(shelter or "").strip()
+
+
+@mcp.tool()
+def who_needs_accessible_transport() -> str:
+    """Residents who need a wheelchair van or an ambulance, highest priority first, with address, why, and the fictional demo shelter they should go to."""
+    try:
+        state = _request("GET", "/api/state")
+    except ServerDown:
+        return DOWN
+    if not state.get("started_at"):
+        return "The evacuation calls haven't started yet, so nobody has been matched to transport."
+    rows = []
+    for r in state.get("residents", []):  # already sorted, highest priority first
+        assist = r.get("assist") or {}
+        transport = str(assist.get("transport") or "").strip()
+        if not transport or not any(k in transport.lower() for k in ACCESSIBLE):
+            continue
+        rows.append((r, assist, transport))
+    if not rows:
+        return "Nobody needs a wheelchair van or an ambulance right now."
+    lines = [f"{_n(len(rows), 'resident needs', 'residents need')} accessible transport."]
+    for r, assist, transport in rows[:8]:
+        article = "an" if transport[:1].lower() in "aeiou" else "a"
+        line = f"{r.get('name', 'Unknown')} at {r.get('address', 'unknown address')} needs {article} {transport}"
+        needs = [str(x) for x in (assist.get("needs") or []) if x]
+        if needs:
+            line += f" ({_join(needs)})"
+        line += "."
+        shelter = _shelter_name(assist.get("shelter"))
+        if shelter:
+            line += f" Take them to {shelter}"
+            why = [str(x) for x in (assist.get("shelter_why") or []) if x]
+            line += f", which has {_join(why)}." if why else "."
+        lines.append(line)
+    return " ".join(lines)
+
+
 @mcp.tool()
 def system_check() -> str:
     """Say whether Headcount is ready: server up, Gemini on or off, real phone calls on or simulated, autopilot."""
