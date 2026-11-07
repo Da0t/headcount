@@ -233,7 +233,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
 <div class="page">
   <header class="top">
     <div class="brand">
-      <img id="logo" src="/static/logo-mark.svg" alt="" width="32" height="32">
+      <img id="logo" src="/static/logo-mark.svg" alt="" width="32" height="32" onerror="var m=document.createElement('span');m.className='mark';m.setAttribute('aria-hidden','true');m.textContent='H';this.replaceWith(m);">
       <span>Headcount <small>phone simulator</small></span>
     </div>
     <div class="top-right">
@@ -304,7 +304,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
             <div id="c-input">
               <div class="chips" role="group" aria-label="Quick answers">
                 <button class="chip" type="button" data-digit="1" aria-label="1, I'm out"><b>1</b><span>I'm out</span></button>
-                <button class="chip" type="button" data-digit="2" aria-label="2, I need a ride"><b>2</b><span>Need a ride</span></button>
+                <button class="chip" type="button" data-digit="2" aria-label="2, I need a ride"><b>2</b><span>Ride</span></button>
                 <button class="chip" type="button" data-digit="3" aria-label="3, I need medical help"><b>3</b><span>Medical</span></button>
               </div>
               <div class="callbar" id="callbar">
@@ -361,13 +361,6 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
   $("c-mic").innerHTML = ICON.mic;
   $("c-send").innerHTML = ICON.send;
   $("c-speaker").innerHTML = ICON.speaker;
-
-  // logo: Agent 4's mark if it is there, otherwise a plain H
-  $("logo").addEventListener("error", function () {
-    const m = document.createElement("span");
-    m.className = "mark"; m.setAttribute("aria-hidden", "true"); m.textContent = "H";
-    this.replaceWith(m);
-  }, { once: true });
 
   if (MOCK) {
     $("mode").textContent = "MOCK"; $("mode").classList.add("mock");
