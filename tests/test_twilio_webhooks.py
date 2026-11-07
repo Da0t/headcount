@@ -59,7 +59,8 @@ def test_voice_webhook_spanish_gather(monkeypatch, client):
     assert res.status_code == 200
     assert "<Gather" in res.text
     assert 'language="es-MX"' in res.text
-    assert "attempt=1&amp;n=1" in res.text
+    assert "/twilio/inbound/1?attempt=1&amp;step=1&amp;out=1" in res.text  # every call asks the 3 questions
+    assert "<Redirect" in res.text and "<Hangup" not in res.text
     assert "Maria" in res.text
     assert r.status == Status.IN_CALL
 

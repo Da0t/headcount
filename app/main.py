@@ -22,7 +22,8 @@ from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, ZONE_CENTER, load_residents
-from app.twilio_voice import (INBOUND_STEP_LABEL, INBOUND_STEPS, ROUTED, TwilioClient, inbound_twiml, message_twiml, prompt_twiml, say_twiml, signature_ok,
+from app.twilio_voice import (CAP_SAY, INBOUND_STEP_LABEL, INBOUND_STEPS, OUTBOUND_GREETING, ROUTED, SILENT_PREFIX,
+                              STEP_QUESTION, UNCLEAR_PREFIX, TwilioClient, inbound_twiml, message_twiml, prompt_twiml, say_twiml, signature_ok,
                               text_ask_again)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -317,7 +318,12 @@ async def twilio_voice(rid: int, request: Request, attempt: int = 1):
         return _twiml(say_twiml(scripts.CALLBACK["en"], "en"))
     if not engine.answered(rid, attempt):
         return _twiml(say_twiml(scripts.CALLBACK[scripts.lang(r.lang)], r.lang))
-    return _twiml(prompt_twiml(r, attempt, 1, _base()))
+    # every call asks the same three questions; outbound opens with the greeting
+    lang = scripts.lang(r.lang)
+    inbound_notes[(rid, attempt)] = {}
+    engine.log(r, f"Call step 1: {INBOUND_STEP_LABEL[1]}", "info")
+    text = OUTBOUND_GREETING[lang].format(first=r.first) + STEP_QUESTION[1][lang]
+    return _twiml(inbound_twiml(r, attempt, 1, _base(), text=text, out=True))
 
 
 @app.post("/twilio/gather/{rid}")
@@ -371,32 +377,48 @@ async def twilio_incoming(request: Request):
     return _twiml(inbound_twiml(r, attempt, 1, _base()))
 
 
-async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech: str) -> dict:
-    """Process one of the three inbound questions for Twilio or the simulator.
+SILENCE_CAP = 20  # consecutive silent re-asks on one step (~5 min) before we give up, to protect trial credit
 
-    Step 1 may record a keypad answer; speech from all steps is classified
-    together at step 3, with the keypad answer taking precedence. A first
-    unclear result restarts the questions; the engine handles the next result.
-    Return an ``ask`` payload for the next prompt or a ``done`` payload after
-    recording the reading through the shared engine response path.
+
+async def _give_up(r, attempt: int, label: str) -> dict:
+    engine.log(r, f"{label}: no answer after {SILENCE_CAP} tries. A person needs to call them back.", "warn")
+    await engine.inbound_dropped(r.id, attempt)  # NEEDS_CALLBACK, never an automatic redial
+    inbound_notes.pop((r.id, attempt), None)
+    return {"done": True, "say": CAP_SAY[scripts.lang(r.lang)], "reading": None}
+
+
+async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech: str, out: bool = False) -> dict:
+    """One of the three questions every call asks (outbound or inbound, Twilio or simulator).
+
+    Never hangs up on silence: re-asks the SAME step (keeping the call alive) up to SILENCE_CAP times.
+    An unclear answer restarts the questions instead of ending the call. After step 3 all answers are
+    classified together (a step-1 key press decides the answer) and go through engine.respond.
+    Returns {"ask", "step", "n", "reask"} for the next prompt, or {"done": True, "say", "reading"}.
     """
     rid = r.id
     lang = scripts.lang(r.lang)
+    label = "Call step" if out else "Inbound step"
     notes = inbound_notes.setdefault((rid, attempt), {})
     digits, speech = (digits or "").strip(), (speech or "").strip()
 
-    if step == 1 and not digits and not speech and n < 2:
-        return {"ask": scripts.ASK_AGAIN[lang], "step": 1, "reask": True}
+    if not digits and not speech:  # silence: ask the same question again, they may still be on the line
+        if n >= SILENCE_CAP:
+            return await _give_up(r, attempt, label)
+        engine.keepalive(rid, attempt)
+        engine.log(r, f"{label} {step}: silence, asking again ({n})", "info")
+        return {"ask": SILENT_PREFIX[lang] + STEP_QUESTION[step][lang], "step": step, "n": n + 1, "reask": True}
+
     if step == 1 and digits:
         notes["digit"] = digits[:1]
         engine.log(r, f"Pressed {digits[:1]}", "speech")
     elif speech:
         notes[str(step)] = speech
         engine.log(r, f"Said (step {step}): “{speech}”", "speech")
+    engine.keepalive(rid, attempt)
 
     if step < 3:
-        engine.log(r, f"Inbound step {step + 1}: {INBOUND_STEP_LABEL[step + 1]}", "info")
-        return {"ask": INBOUND_STEPS[step + 1][lang], "step": step + 1, "reask": False}
+        engine.log(r, f"{label} {step + 1}: {INBOUND_STEP_LABEL[step + 1]}", "info")
+        return {"ask": INBOUND_STEPS[step + 1][lang], "step": step + 1, "n": 1, "reask": False}
 
     # all three steps heard: understand them together
     text = " ".join(notes.get(k, "") for k in ("1", "2", "3")).strip()
@@ -416,11 +438,17 @@ async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech:
     if notes.get("3"):
         reading.where_they_are = notes["3"]
 
+    if reading.answer == Answer.UNCLEAR:  # not silent, just unclear: start over, no callback until the cap
+        rounds = notes.get("unclear", 0) + 1
+        engine.log(r, f"Heard: “{reading.quote or text}” ({reading.engine or 'unknown'}), unclear", "speech")
+        if rounds >= SILENCE_CAP:
+            return await _give_up(r, attempt, label)
+        inbound_notes[(rid, attempt)] = {"unclear": rounds}
+        engine.log(r, f"{label} 1 (again): {INBOUND_STEP_LABEL[1]}", "info")
+        return {"ask": UNCLEAR_PREFIX[lang] + STEP_QUESTION[1][lang], "step": 1, "n": 1, "reask": True,
+                "reading": reading}
+
     say, keep = await engine.respond(rid, attempt, reading)
-    if keep:  # unclear: start the questions over once
-        inbound_notes[(rid, attempt)] = {}
-        engine.log(r, f"Inbound step 1 (again): {INBOUND_STEP_LABEL[1]}", "info")
-        return {"ask": scripts.ASK_AGAIN[lang], "step": 1, "reask": True, "reading": reading}
     inbound_notes.pop((rid, attempt), None)
     if reading.answer in (Answer.NEEDS_RIDE, Answer.NEEDS_MEDICAL):
         say += ROUTED[lang]
@@ -429,17 +457,16 @@ async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech:
 
 
 @app.post("/twilio/inbound/{rid}")
-async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step: int = 1, n: int = 1):
+async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step: int = 1, n: int = 1, out: int = 0):
     params = await _twilio_form(request)
     r = engine.residents.get(rid)
     if r is None:
         return _twiml(say_twiml(scripts.CALLBACK["en"], "en"))
-    out = await _inbound_step(r, attempt, step, n, params.get("Digits", ""), params.get("SpeechResult", ""))
-    if out.get("done"):
-        return _twiml(say_twiml(out["say"], r.lang))
-    # a re-ask of step 1 after silence carries n=2, so a second silence moves on instead of looping
-    nxt_n = 2 if (out["reask"] and step == 1 and n < 2) else 1
-    return _twiml(inbound_twiml(r, attempt, out["step"], _base(), text=out["ask"] if out["reask"] else None, n=nxt_n))
+    res = await _inbound_step(r, attempt, step, n, params.get("Digits", ""), params.get("SpeechResult", ""),
+                              out=bool(out))
+    if res.get("done"):
+        return _twiml(say_twiml(res["say"], r.lang))
+    return _twiml(inbound_twiml(r, attempt, res["step"], _base(), text=res["ask"], n=res["n"], out=bool(out)))
 
 
 # ---------------------------------------------------------------------- free simulated inbound call (no Twilio)
@@ -479,7 +506,7 @@ async def sim_inbound_step(rid: int, attempt: int, step: int = 1, n: int = 1,
     out = await _inbound_step(r, attempt, step, n, d, t)
     reading = out.get("reading")
     res = {"say": out.get("say") or out.get("ask"), "step": out.get("step", step), "done": bool(out.get("done")),
-           "reask": bool(out.get("reask")), "status": r.status.value,
+           "reask": bool(out.get("reask")), "n": out.get("n", 1), "status": r.status.value,
            "reading": reading.model_dump(mode="json") if reading else None}
     return res
 

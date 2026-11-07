@@ -56,22 +56,45 @@ def test_known_resident_keypad_safe(api):
     call_in(c, "+16195550103")
     a = r.attempts
     c.post(f"/twilio/inbound/3?attempt={a}&step=1", data={"Digits": "1"})
-    c.post(f"/twilio/inbound/3?attempt={a}&step=2", data={})
-    res = c.post(f"/twilio/inbound/3?attempt={a}&step=3", data={})
+    c.post(f"/twilio/inbound/3?attempt={a}&step=2", data={"SpeechResult": "nobody, no pets"})
+    res = c.post(f"/twilio/inbound/3?attempt={a}&step=3", data={"SpeechResult": "Lantern Way"})
     assert r.status == Status.OUT and "being routed" not in res.text and "<Hangup" in res.text
 
 
-def test_silence_on_step1_reasks_then_unclear_restarts(api):
+def test_silence_reasks_same_step_and_unclear_restarts(api):
     c, eng = api
     call_in(c, "+16195559999")
     r = eng.residents[max(eng.residents)]
     a = r.attempts
-    res = c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=1", data={})
-    assert "step=1" in res.text.replace("&amp;", "&")
-    c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=1&n=2", data={"SpeechResult": "hmm"})
-    c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=2", data={})
-    res = c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=3", data={})
-    assert r.status == Status.IN_CALL and "step=1" in res.text.replace("&amp;", "&")
+    c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=1", data={"SpeechResult": "hmm"})
+    res = c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=2", data={})  # silence on step 2: same step again
+    assert "step=2&amp;n=2" in res.text and "Take your time" in res.text and "<Hangup" not in res.text
+    c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=2&n=2", data={"SpeechResult": "uh"})
+    res = c.post(f"/twilio/inbound/{r.id}?attempt={a}&step=3", data={"SpeechResult": "blah"})
+    assert r.status == Status.IN_CALL and "step=1" in res.text and "<Hangup" not in res.text  # unclear: start over
+
+
+def test_silence_cap_ends_with_callback(api):
+    c, eng = api
+    call_in(c, "+16195557777")
+    r = eng.residents[max(eng.residents)]
+    res = c.post(f"/twilio/inbound/{r.id}?attempt={r.attempts}&step=1&n=20", data={})
+    assert "<Hangup" in res.text and "911" in res.text
+    assert r.status == Status.NEEDS_CALLBACK
+
+
+def test_outbound_call_asks_three_questions(api):
+    c, eng = api
+    r = eng.residents[4]
+    r.phone, r.attempts, r.status, r.channel = "+16195550104", 1, Status.CALLING, "twilio"
+    res = c.post("/twilio/voice/4?attempt=1", data={})
+    assert "Hello Frank" in res.text and "out=1" in res.text
+    c.post("/twilio/inbound/4?attempt=1&step=1&out=1", data={"SpeechResult": "I can't drive and my wife uses a wheelchair"})
+    c.post("/twilio/inbound/4?attempt=1&step=2&out=1", data={"SpeechResult": "my wife and our dog"})
+    res = c.post("/twilio/inbound/4?attempt=1&step=3&out=1", data={"SpeechResult": "915 Lantern Way"})
+    assert r.status == Status.NEEDS_RIDE and "being routed" in res.text
+    assert r.reading.where_they_are == "915 Lantern Way"
+    assert any(e["msg"].startswith("Call step 3") for e in eng.events if e["rid"] == 4)
 
 
 def test_spanish_resident_hears_spanish(api):

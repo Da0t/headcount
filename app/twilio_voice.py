@@ -98,6 +98,26 @@ INBOUND_STEPS = {
     3: {"en": "What is your address or the nearest cross street?",
         "es": "¿Cuál es su dirección o la esquina más cercana?"},
 }
+# Short versions for re-asking the same question (after silence or an unclear answer).
+STEP_QUESTION = {
+    1: {"en": "Are you safe right now, or do you need help? Press 1 if you are safe, 2 if you need a ride, "
+              "3 for medical help, or just tell me.",
+        "es": "¿Está a salvo ahora mismo o necesita ayuda? Oprima 1 si está a salvo, 2 si necesita transporte, "
+              "3 si necesita ayuda médica, o simplemente dígamelo."},
+    2: {"en": "Is anyone with you, and do you have pets?", "es": "¿Hay alguien con usted, y tiene mascotas?"},
+    3: {"en": "What is your address or the nearest cross street?",
+        "es": "¿Cuál es su dirección o la esquina más cercana?"},
+}
+SILENT_PREFIX = {"en": "I didn't hear anything. Take your time. ", "es": "No escuché nada. Tómese su tiempo. "}
+UNCLEAR_PREFIX = {"en": "Sorry, I didn't understand. Let's try again. ", "es": "Perdón, no le entendí. Intentemos otra vez. "}
+CAP_SAY = {"en": "We'll keep trying to reach you. If you are in danger, call 911.",
+           "es": "Seguiremos intentando comunicarnos con usted. Si está en peligro, llame al 911."}
+OUTBOUND_GREETING = {
+    "en": "Hello {first}, this is Headcount, the evacuation check for your neighborhood. "
+          "There is an evacuation order for your area. This is a demo. ",
+    "es": "Hola {first}, le habla Headcount, la verificación de evacuación de su vecindario. "
+          "Hay una orden de evacuación para su zona. Esto es una demostración. ",
+}
 INBOUND_STEP_LABEL = {1: "are you safe or do you need help", 2: "anyone with you, pets", 3: "address or cross street"}
 ROUTED = {
     "en": " A responder is being routed to you now. This is a demo; no real responders are dispatched.",
@@ -105,23 +125,27 @@ ROUTED = {
 }
 
 
-def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | None = None, n: int = 1) -> str:
+def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | None = None, n: int = 1,
+                  out: bool = False) -> str:
     """One step of the structured inbound call: speak, then listen for speech (or a digit on step 1)."""
     lang = scripts.lang(r.lang)
     code = scripts.LANG_CODE[lang]
+    action = (f"{base}/twilio/inbound/{r.id}?attempt={attempt}&step={step}" + (f"&n={n}" if n > 1 else "")
+              + ("&out=1" if out else ""))
     resp = VoiceResponse()
     gather = Gather(
         input="speech dtmf",
         num_digits=1,
-        timeout=7,
+        timeout=8,
         speech_timeout="auto",
         language=code,
-        action=f"{base}/twilio/inbound/{r.id}?attempt={attempt}&step={step}" + (f"&n={n}" if n > 1 else ""),
+        action=action,
         method="POST",
         action_on_empty_result=True,
     )
     gather.say(text or INBOUND_STEPS[step][lang], language=code)
     resp.append(gather)
+    resp.redirect(action, method="POST")  # belt and braces: no input never falls through to a hang-up
     return str(resp)
 
 
