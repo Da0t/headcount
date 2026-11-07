@@ -149,8 +149,18 @@ class Engine:
         r.call_sid = ""
         self._touch(r, Status.IN_CALL)
         self.log(r, f"Incoming call from {r.name} (attempt {r.attempts}).", "alert")
-        self._schedule(rid, "ring", 150, self.no_answer, rid, r.attempts, "inbound call ended without an answer")
+        # If they hang up mid-call we do NOT auto-redial (that would place a real call): a human calls back.
+        self._schedule(rid, "ring", 150, self.inbound_dropped, rid, r.attempts)
         return r.attempts
+
+    async def inbound_dropped(self, rid: int, attempt: int) -> None:
+        """An incoming call ended before a clear answer: flag a human callback instead of dialing automatically."""
+        r = self.residents.get(rid)
+        if r is None or attempt != r.attempts or r.status not in LIVE:
+            return
+        self._cancel(rid, "ring")
+        self._touch(r, Status.NEEDS_CALLBACK)
+        self.log(r, "Incoming call ended before a clear answer. A person needs to call them back (no automatic redial).", "warn")
 
     async def call_one(self, rid: int) -> bool:
         """Demo helper: (re)start calls for ONE resident without running the whole campaign.
