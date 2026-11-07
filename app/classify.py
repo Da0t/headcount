@@ -258,7 +258,9 @@ def _pets(t: str) -> list[str]:
             m = re.search(r"(\d+|" + "|".join(NUMBERS) + r") " + re.escape(w.strip()), t)
             if m:
                 n = m.group(1)
-                found.append(f"{NUMBERS.get(n, n)} {name}")
+                count = NUMBERS.get(n, n)
+                plural = name if name.endswith("s") or str(count) == "1" else name + "s"
+                found.append(f"{count} {plural}")
                 break
             if w in t:
                 found.append(name)

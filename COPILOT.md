@@ -17,6 +17,7 @@ How to add an entry:
 | 13:21 PT | `tests/test_classify_extra.py`, `app/classify.py` | Promote the negated-injury xfails after the classifier fix. | Removed the xfail markers so the Spanish and English negated-injury cases run as regular regression tests. | Kept both cases as normal tests against the fix in `app/classify.py`. |
 | 13:25 PT | `app/engine.py`, async task scheduling review | Review task cancellation, stale attempts, reset, autopilot, and family texts for races. | Found a stale-attempt collision after reset, in-flight Twilio work that can outlive reset, and scheduled autopilot tasks that can continue after autopilot is switched off. | No application code changed; recorded findings with severity and line references under Solve. |
 | 13:32 PT | `app/priority.py`, `COPILOT.md` | Explain the priority formula with a worked example and record the engine-review fixes. | Added module and function docstrings, updated Solve and Document, and logged this work. | Kept the change to documentation only; no application logic changed. |
+| 13:50 PT | `app/seed.py`, campaign tests | Expand the fictional demo zone to 20 residents and update the campaign totals. | Added ten varied fictional residents covering every outcome with keyword-classifiable scripts, and updated the old total assertions. | Kept residents 1 to 10 unchanged; expected totals are 7 OUT, 6 NEEDS_RIDE, 2 NEEDS_MEDICAL, 2 STAYING, 2 WELFARE_CHECK, and 1 NEEDS_CALLBACK. |
 
 ## Learn
 *Where Copilot helped us understand something new: an API, a library, an unfamiliar error.*
@@ -29,6 +30,7 @@ How to add an entry:
 - The xfail tests found that negated injuries ("No me caí", "haven't fallen or been hurt") were misclassified as NEEDS_MEDICAL by the keyword fallback. The team fixed `app/classify.py`, and I converted the xfails into regular regression tests.
 - The engine review found a high-severity stale-callback risk: reset clears attempt counters, so an old callback can match a new live attempt (`app/engine.py:107-110, 122-128, 164-199`). It also found medium-severity reset and autopilot races: in-flight Twilio calls or texts can outlive reset, and an already-scheduled autopilot task does not check whether autopilot was switched off (`app/engine.py:135, 151-155, 230-255, 256-272`). No application code changed.
 - The team fixed the three engine-review findings in commit `1054de6`: attempt reuse after reset, in-flight family text after reset, and autopilot not stopping. Regression tests cover the fixes.
+- Expanded `app/seed.py` from 10 to 20 fictional demo residents with English and Spanish scripts, varied medical and mobility needs, companions, pets, a deaf text respondent, and examples for every outcome. The team corrected Maribel's language to English and the counted-pet expectation to "2 cats" during review. The expected final counts are 7 OUT, 6 NEEDS_RIDE, 2 NEEDS_MEDICAL, 2 STAYING, 2 WELFARE_CHECK, and 1 NEEDS_CALLBACK.
 
 ## Test
 *Where Copilot helped write or extend tests, or found an edge case we missed.*

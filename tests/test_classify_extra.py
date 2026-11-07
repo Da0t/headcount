@@ -33,5 +33,5 @@ def test_extracts_spanish_companions_pets_and_equipment():
     reading = keyword_classify("Mi esposa está conmigo. Tengo dos gatos y uso CPAP.")
 
     assert reading.people_with_them == 1
-    assert reading.pets == ["2 cat"]
+    assert reading.pets == ["2 cats"]
     assert reading.medical_equipment == ["cpap"]
