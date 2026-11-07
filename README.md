@@ -62,7 +62,7 @@ The multiplier starts at 1.0. For example, Walter (87, bedridden, lives alone, n
 - **Shelter** is the demo shelter that covers the most of what they need. `shelter_why` lists what it covers, and says so when no demo shelter covers something (for example pets).
 - **Needs** are short responder notes, such as "oxygen: bring portable tanks, shelter needs backup power" or "hard of hearing: use text or face-to-face, not a loudspeaker".
 
-The four shelters are **fictional** and marked as such: Alpine High School gym (demo), Alpine Community Center (demo), Viejas Valley Medical Shelter (demo), and Harbison Canyon Fairgrounds (demo). `GET /api/accessibility` lists them with their capabilities (`wheelchair_accessible`, `oxygen_power`, `medical_staff`, `pets_allowed`, `large_animals`, and `"fictional": true`).
+The four shelters are **fictional demo data** and marked as such: Tierrasanta Rec Center (demo) (wheelchair access, oxygen backup power), Mission Trails Community Center (demo) (wheelchair access, pets), Tierrasanta Medical Shelter (demo) (wheelchair access, oxygen backup power, medical staff), and Mission Trails Equestrian Staging Area (demo) (pets, large animals). They do not describe any real facility's capabilities. When two shelters meet the same needs, Headcount picks the one with the fewest extras, so the medical shelter stays free for people who need it. `GET /api/accessibility` lists them with their capabilities (`wheelchair_accessible`, `oxygen_power`, `medical_staff`, `pets_allowed`, `large_animals`, and `"fictional": true`).
 
 **Family texts** go out the moment someone answers, or when a welfare check is called ("we could not reach Walter after 3 calls, a responder is being sent"). Residents without a contact are skipped.
 
@@ -145,13 +145,13 @@ While the call runs, the event log shows a live timeline: each Twilio status (`T
 
 There is deliberately no VoiceOS tool for this single call: the confirmation stays a deliberate human action. (`start_evacuation_calls` does start the whole campaign, including real calls to mapped residents, after VoiceOS asks for confirmation.)
 
-## Map data
+## Map
 
-The server provides map data for the demo zone around Alpine (San Diego County). The board's map panel is coming next.
+The board has a zone map (switch between **Split**, **Table** and **Map** layouts). It shows the shaded evacuation zone, a pin for every resident colored by status (a pulsing ring while they're being called, a check mark once they're out), and dashed routes from the fictional fire base to each person who needs help, then on to their fictional shelter, with a vehicle dot moving along each route. Routes are **illustrative straight lines between fictional demo points, not navigation guidance.**
 
-- **Everything is fictional:** resident locations, "Alpine Fire Station (demo)", and the four demo shelters. No directions service is used.
+- **Everything is fictional:** resident names, addresses and pins, "Fire Station (demo)", and the four demo shelters. No directions service is used.
 - **Token:** put a Mapbox public token in `.env` as `MAPBOX_TOKEN` (`.env` is gitignored; never commit it). The server hands it to the board through `/api/map`, so use a **URL-restricted public token** (`pk.…`) scoped to your demo URL.
-- **No token?** `/api/map` returns an empty `token`, and the board runs without a map. Everything else works.
+- **No token?** `/api/map` returns an empty `token`, and the board draws a simple SVG version of the same map (zone, pins, routes) instead of Mapbox. Everything else works.
 - **Data:** `GET /api/map` returns `{"token", "center": [lng, lat], "zoom", "zone": <GeoJSON Polygon around all pins>, "base": {"name", "lat", "lng"}, "shelters": [{"name", "short", "lng", "lat", "wheelchair_accessible", "oxygen_power", "medical_staff", "pets_allowed", "large_animals", "fictional": true}]}`. Each resident in `/api/state` carries its own `lat`/`lng`, and its `assist` plan carries `shelter_lat`/`shelter_lng` (null when there's no shelter).
 
 ## Simulator and mock mode
@@ -191,7 +191,7 @@ python3 -c "import mcp_server as m; print(m.evacuation_status())"
 
 ## The demo zone
 
-`app/seed.py` holds 20 fictional residents in "Alpine (demo zone)". On autopilot, their scripted answers cover every path. The first ten:
+`app/seed.py` holds 20 fictional residents in "Tierrasanta, San Diego (demo zone)", next to Mission Trails Regional Park. On autopilot, their scripted answers cover every path. The first ten:
 
 | Resident | What happens | Ends as |
 |---|---|---|
@@ -221,7 +221,7 @@ Everything lives in `.env` (see [`.env.example`](.env.example) for every variabl
 | `HEADCOUNT_RETRY_GAP` | 15 | Seconds before calling a missed resident again |
 | `HEADCOUNT_MAX_ATTEMPTS` | 3 | Calls before a welfare check |
 | `HEADCOUNT_AUTOPILOT` | 1 | Simulated residents answer on their own (also a toggle on the board) |
-| `MAPBOX_TOKEN` | none | URL-restricted Mapbox public token for the board's map. Without it, the board skips the map. |
+| `MAPBOX_TOKEN` | none | URL-restricted Mapbox public token for the board's map. Without it, the board draws an SVG fallback map. |
 
 For a faster stage demo, try `HEADCOUNT_STAGGER=1 HEADCOUNT_RING_TIMEOUT=8 HEADCOUNT_RETRY_GAP=4`.
 
@@ -257,7 +257,7 @@ tests/               engine, classifier, and webhook tests
 
 ## Safety
 
-- Every resident in the demo is **fictional**. Real calls go only to consenting teammates mapped in `residents_phones.json`. Demo texts start with "Headcount demo:".
+- Every resident in the demo is **fictional**, including their names, addresses and health details. Map pins and shelters are fictional demo points in a real neighborhood, not real people or real shelter capabilities. Real calls go only to consenting teammates mapped in `residents_phones.json`. Demo texts start with "Headcount demo:".
 - Headcount is **not an official alert system** and never claims to be a government agency. In an emergency, call 911.
 - We do **not** use Gemini's Google Maps grounding, which is not permitted for emergency response use.
 
@@ -268,6 +268,7 @@ tests/               engine, classifier, and webhook tests
 - [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [Pydantic](https://docs.pydantic.dev/), `python-multipart`, `python-dotenv`
 - [Model Context Protocol](https://modelcontextprotocol.io/) Python SDK (`mcp`), with VoiceOS as the voice client
 - Plain HTML, CSS, and JavaScript for the board and phone simulator (no build step)
+- [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) for the zone map, with an SVG fallback
 - [pytest](https://pytest.org/) and [HTTPX](https://www.python-httpx.org/) for tests
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (`cloudflared`) or [ngrok](https://ngrok.com/) to reach Twilio webhooks
 - [GitHub Copilot](https://github.com/features/copilot), see [COPILOT.md](COPILOT.md)
