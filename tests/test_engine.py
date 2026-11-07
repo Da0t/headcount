@@ -364,3 +364,25 @@ def test_inbound_call_from_known_and_unknown_numbers():
         assert e.snapshot()["total"] == 2
         e.reset()
     run(go())
+
+
+def test_dropped_inbound_call_flags_callback_without_redial():
+    placed = []
+
+    class FakeTwilio:
+        def place_call(self, r, attempt):
+            placed.append(attempt)
+            return "CA1"
+
+        def send_sms(self, to, body):
+            return "SM1"
+
+    async def go():
+        e = Engine(fast(), [one(phone="+16195550101")], twilio=FakeTwilio())
+        att = e.begin_inbound(1)
+        await e.inbound_dropped(1, att)
+        await asyncio.sleep(0.2)
+        assert e.residents[1].status == Status.NEEDS_CALLBACK
+        assert placed == []
+        e.reset()
+    run(go())

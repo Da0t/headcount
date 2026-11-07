@@ -1,6 +1,6 @@
 # Headcount pitch (2 minutes)
 
-Spoken lines are in plain text. *Stage directions are in italics.* The spoken lines are about 260 words, roughly 1:45 at a normal pace, so keep the demo pauses short.
+Spoken lines are in plain text. *Stage directions are in italics.* The spoken lines are about 275 words, roughly 1:50 at a normal pace. Keep demo pauses short, and if you're running long, cut the George beat first.
 
 ## Script
 
@@ -10,7 +10,7 @@ Santa Ana winds. An evacuation order goes out for Tierrasanta, in San Diego. Mar
 
 **0:20 · The gap**
 
-Alerts only go one way. Responders end up knocking on the doors of people who already left, while the people who can't leave sit and wait. Headcount closes the loop. It calls every older adult in the zone until each one is accounted for.
+Alerts only go one way. Responders end up knocking on the doors of people who already left, while the people who can't leave sit and wait. It calls every older adult in the zone until each one is accounted for.
 
 **0:40 · Live demo**
 
@@ -24,7 +24,7 @@ She said it in her own words. The row flips to **needs a ride**, with "uses oxyg
 
 *With Twilio on, the family text lands on another teammate's phone: hold it up. With Twilio off, point at Maria's row, which reads "Texted Ana (daughter) (simulated)".*
 
-Her daughter Ana just got a text: her mom answered, needs a ride, and a responder has been told.
+Her daughter Ana just got a text.
 
 *Point at George's row.*
 
@@ -32,17 +32,27 @@ George is hard of hearing, so he never gets a call. He gets a text and replies 1
 
 *Point at the map.*
 
-Tomasina is 96 and bedridden, and she never picks up. Headcount doesn't guess. After three calls her pin turns red, and a wheelchair van routes from the fire base to her, then on to the Rec Center shelter, which has backup power for her oxygen. Every place on this map is fictional.
+Tomasina is 96 and bedridden, and she never picks up. Headcount doesn't guess. After three calls her pin turns red, and a wheelchair van routes from the fire base to her, then on to the Mesa Lantern shelter, which has backup power for her oxygen. Every place on this map is fictional.
 
 *Ask VoiceOS out loud: "Who still needs help?" Let it answer.*
 
-A responder in a truck can ask that without touching a screen, and "who needs a wheelchair van?" tells the driver where to take each person.
+A responder in a truck can ask that without touching a screen.
 
-**1:35 · The rule**
+**1:30 · The rule**
 
 Gemini understands messy speech in two languages, in about a second. Plain, tested rules decide who gets help, so every call can be explained.
 
-**1:50 · Close**
+**1:40 · "I'll call it myself"**
+
+*Dial the Headcount number from your own phone, on speaker.*
+
+One more. I'll call it myself, as someone in danger.
+
+*Answer its three questions out loud: are you safe, who's with you, where are you.*
+
+It understood me, flagged what I need, and a simulated dispatch routes a vehicle to me. This is a demo: no real responders are contacted. In a real emergency, call 911.
+
+**1:55 · Close**
 
 *Point at the green banner. With 20 residents, the board ends at 7 out and safe, 6 need a ride, 2 need medical help, 2 are staying, 2 welfare checks, and 1 callback.*
 

@@ -62,7 +62,7 @@ The multiplier starts at 1.0. For example, Walter (87, bedridden, lives alone, n
 - **Shelter** is the demo shelter that covers the most of what they need. `shelter_why` lists what it covers, and says so when no demo shelter covers something (for example pets).
 - **Needs** are short responder notes, such as "oxygen: bring portable tanks, shelter needs backup power" or "hard of hearing: use text or face-to-face, not a loudspeaker".
 
-The four shelters are **fictional demo data** and marked as such: Tierrasanta Rec Center (demo) (wheelchair access, oxygen backup power), Mission Trails Community Center (demo) (wheelchair access, pets), Tierrasanta Medical Shelter (demo) (wheelchair access, oxygen backup power, medical staff), and Mission Trails Equestrian Staging Area (demo) (pets, large animals). They do not describe any real facility's capabilities. When two shelters meet the same needs, Headcount picks the one with the fewest extras, so the medical shelter stays free for people who need it. `GET /api/accessibility` lists them with their capabilities (`wheelchair_accessible`, `oxygen_power`, `medical_staff`, `pets_allowed`, `large_animals`, and `"fictional": true`).
+The four shelters are **fictional demo data** with invented names: Mesa Lantern Shelter (demo) (wheelchair access, oxygen backup power), Quail Ridge Community Shelter (demo) (wheelchair access, pets), Sage Hollow Medical Shelter (demo) (wheelchair access, oxygen backup power, medical staff), and Canyon Lark Equestrian Grounds (demo) (pets, large animals). They do not describe any real facility's capabilities. When two shelters meet the same needs, Headcount picks the one with the fewest extras, so the medical shelter stays free for people who need it. `GET /api/accessibility` lists them with their capabilities (`wheelchair_accessible`, `oxygen_power`, `medical_staff`, `pets_allowed`, `large_animals`, and `"fictional": true`).
 
 **Family texts** go out the moment someone answers, or when a welfare check is called ("we could not reach Walter after 3 calls, a responder is being sent"). Residents without a contact are skipped.
 
@@ -145,11 +145,27 @@ While the call runs, the event log shows a live timeline: each Twilio status (`T
 
 There is deliberately no VoiceOS tool for this single call: the confirmation stays a deliberate human action. (`start_evacuation_calls` does start the whole campaign, including real calls to mapped residents, after VoiceOS asks for confirmation.)
 
+### Calling in: "I'll call it myself"
+
+Someone in danger can also call the Headcount number. Set the number's **"A call comes in"** webhook in the Twilio console to HTTP POST `<PUBLIC_BASE_URL>/twilio/incoming`.
+
+1. Headcount matches the caller ID to a resident. An unknown number is added to the board as "Caller ...1234", pinned at the zone center.
+2. The call opens with "Headcount emergency line. This is a demo, if this is a real emergency hang up and call 911." and then asks three short questions, in English or Spanish:
+   - "Are you safe right now, or do you need help?" (in their own words, or press 1 safe, 2 need a ride, 3 medical help)
+   - "Is anyone with you, and do you have pets?"
+   - "What is your address or the nearest cross street?"
+3. The three answers are read together, the same way as an outgoing call: a keypad press decides the answer, speech adds the details, and the address becomes where they are. The same rules decide the outcome (OUT, NEEDS_RIDE, NEEDS_MEDICAL or STAYING; unclear twice means a human calls back).
+4. For a ride or medical help, the event log shows "Routing a responder (simulated dispatch, demo)." and the caller hears that a responder is being routed, followed by "This is a demo; no real responders are dispatched." The board shows them with their transport and shelter like any other resident.
+
+Each step is a signature-checked webhook (`/twilio/inbound/{rid}?attempt=N&step=1..3`).
+
+This is a demo. **No real responders, hospitals or 911 are contacted.** In a real emergency, call 911.
+
 ## Map
 
-The board has a zone map (switch between **Split**, **Table** and **Map** layouts). It shows the shaded evacuation zone, a pin for every resident colored by status (a pulsing ring while they're being called, a check mark once they're out), and dashed routes from the fictional fire base to each person who needs help, then on to their fictional shelter, with a vehicle dot moving along each route. Routes are **illustrative straight lines between fictional demo points, not navigation guidance.**
+The board has a zone map (switch between **Split**, **Table** and **Map** layouts). It shows the shaded evacuation zone, a pin for every resident colored by status (a pulsing ring while they're being called, a check mark once they're out), and dashed routes from the fictional fire base to each person who needs help, then on to their fictional shelter, with a vehicle dot moving along each route. With a Mapbox token, a **3D** toggle shows city buildings plus raised markers for the shelters, the medical shelter and the fire base. Routes are **illustrative straight lines between fictional demo points, not navigation guidance.**
 
-- **Everything is fictional:** resident names, addresses and pins, "Fire Station (demo)", and the four demo shelters. No directions service is used.
+- **Everything is fictional:** resident names, addresses and pins, "Station 0 (demo)" (the fire base), and the four demo shelters. No directions service is used.
 - **Token:** put a Mapbox public token in `.env` as `MAPBOX_TOKEN` (`.env` is gitignored; never commit it). The server hands it to the board through `/api/map`, so use a **URL-restricted public token** (`pk.…`) scoped to your demo URL.
 - **No token?** `/api/map` returns an empty `token`, and the board draws a simple SVG version of the same map (zone, pins, routes) instead of Mapbox. Everything else works.
 - **Data:** `GET /api/map` returns `{"token", "center": [lng, lat], "zoom", "zone": <GeoJSON Polygon around all pins>, "base": {"name", "lat", "lng"}, "shelters": [{"name", "short", "lng", "lat", "wheelchair_accessible", "oxygen_power", "medical_staff", "pets_allowed", "large_animals", "fictional": true}]}`. Each resident in `/api/state` carries its own `lat`/`lng`, and its `assist` plan carries `shelter_lat`/`shelter_lng` (null when there's no shelter).
