@@ -32,18 +32,26 @@ class TwilioClient:
 
     def place_call(self, r: Resident, attempt: int) -> str:
         base = self.settings.public_base_url
-        call = self.client.calls.create(
-            to=r.phone,
-            from_=self.settings.twilio_from_number,
-            url=f"{base}/twilio/voice/{r.id}?attempt={attempt}",
-            method="POST",
-            status_callback=f"{base}/twilio/status/{r.id}?attempt={attempt}",
-            status_callback_method="POST",
-            # every stage, so the board can show a live timeline: initiated, ringing, answered, completed
-            status_callback_event=["initiated", "ringing", "answered", "completed"],
-            timeout=int(self.settings.ring_timeout),
-        )
-        return call.sid
+        core = dict(to=r.phone, from_=self.settings.twilio_from_number,
+                    url=f"{base}/twilio/voice/{r.id}?attempt={attempt}", method="POST")
+        status = dict(status_callback=f"{base}/twilio/status/{r.id}?attempt={attempt}", status_callback_method="POST")
+        # Richest first. Trial accounts reject some optional parameters with HTTP 400 ("limited parameter
+        # access"); a rejected request places no call, so fall back until Twilio accepts one.
+        tries = [
+            {**core, **status, "status_callback_event": ["initiated", "ringing", "answered", "completed"],
+             "timeout": int(self.settings.ring_timeout)},
+            {**core, **status},
+            core,
+        ]
+        last = None
+        for params in tries:
+            try:
+                return self.client.calls.create(**params).sid
+            except Exception as exc:  # noqa: BLE001
+                if getattr(exc, "status", None) != 400:
+                    raise
+                last = exc
+        raise last
 
     def send_checkin(self, r: Resident, attempt: int) -> str:
         """Text check-in instead of a call (contact_mode="text"). The reply arrives at /twilio/sms."""
