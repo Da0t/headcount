@@ -12,6 +12,7 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from twilio.twiml.messaging_response import MessagingResponse
 
 from app import accessibility, scripts
 from app.classify import classify_audio, classify_text, digits_reading
@@ -19,8 +20,8 @@ from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, load_residents
-from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok, text_ask_again,
-                              text_prompt)
+from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok,
+                              text_ask_again)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("headcount.main")
@@ -143,9 +144,7 @@ def _mode(r) -> str:
 
 
 def _prompt(r) -> str:
-    if _mode(r) == "text":
-        return text_prompt(r.lang)
-    return scripts.PROMPT[scripts.lang(r.lang)].format(first=r.first)
+    return scripts.prompt_for(r)
 
 
 def _resident(rid: int):
@@ -284,16 +283,38 @@ async def twilio_status(rid: int, request: Request, attempt: int = 1):
     return Response(status_code=204)
 
 
+def _digits(s: str) -> str:
+    return re.sub(r"\D", "", s or "")
+
+
+@app.post("/twilio/sms")
+async def twilio_sms_inbound(request: Request):
+    """The Twilio number's Messaging webhook. Inbound texts carry no resident id, so match on From.
+
+    Only text-mode residents mapped to a real phone in residents_phones.json can match; anyone else gets no reply.
+    """
+    params = await _twilio_form(request)
+    sender = _digits(params.get("From", ""))
+    r = next((x for x in engine.residents.values()
+              if sender and _mode(x) == "text" and _digits(x.phone) == sender), None)
+    if r is None:
+        log.info("Inbound SMS from an unmapped number ignored.")
+        return _twiml(str(MessagingResponse()))
+    return await _sms_reply(r, r.attempts, params)
+
+
 @app.post("/twilio/sms/{rid}")
 async def twilio_sms(rid: int, request: Request, attempt: int = 1):
-    """Inbound SMS for text check-in residents (deaf or hard of hearing). Body is a digit or free text.
-
-    Only reachable from a real phone mapped in residents_phones.json; the demo runs it simulated.
-    """
+    """Inbound SMS for a known resident and attempt. Body is a digit or free text."""
     params = await _twilio_form(request)
     r = engine.residents.get(rid)
     if r is None:
         return _twiml(message_twiml(scripts.CALLBACK["en"]))
+    return await _sms_reply(r, attempt, params)
+
+
+async def _sms_reply(r, attempt: int, params: dict) -> Response:
+    rid = r.id
     lang = scripts.lang(r.lang)
     body = params.get("Body", "").strip()
     if not body:

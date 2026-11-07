@@ -43,6 +43,10 @@ class TwilioClient:
         )
         return call.sid
 
+    def send_checkin(self, r: Resident, attempt: int) -> str:
+        """Text check-in instead of a call (contact_mode="text"). The reply arrives at /twilio/sms."""
+        return self.send_sms(r.phone, scripts.prompt_for(r))
+
     def send_sms(self, to: str, body: str) -> str:
         msg = self.client.messages.create(to=to, from_=self.settings.twilio_from_number, body=body)
         return msg.sid
@@ -77,20 +81,11 @@ def say_twiml(text: str, lang: str) -> str:
     return str(resp)
 
 
-# Text check-in wording. Agent 1's scripts.py may define TEXT_PROMPT / TEXT_ASK_AGAIN; these are the fallbacks.
-_TEXT_PROMPT = {
-    "en": "Headcount: evacuation order for your area. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
-    "es": "Headcount: orden de evacuación para su zona. Responda 1 si ya salió, 2 si necesita transporte, "
-          "3 si necesita ayuda médica.",
-}
+# Unclear-reply text. Voice ASK_AGAIN says "press"; a text should say "reply".
 _TEXT_ASK_AGAIN = {
     "en": "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
     "es": "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
 }
-
-
-def text_prompt(lang: str) -> str:
-    return getattr(scripts, "TEXT_PROMPT", _TEXT_PROMPT)[scripts.lang(lang)]
 
 
 def text_ask_again(lang: str) -> str:
