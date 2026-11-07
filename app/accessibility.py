@@ -44,15 +44,15 @@ class Shelter:
 
 
 SHELTERS: list[Shelter] = [
-    Shelter("Tierrasanta Rec Center (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
-            wheelchair_accessible=True, oxygen_power=True, lat=32.8262, lng=-117.1035, short="Rec Center"),
-    Shelter("Mission Trails Community Center (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
-            wheelchair_accessible=True, pets_allowed=True, lat=32.8298, lng=-117.0905, short="Community Ctr"),
-    Shelter("Tierrasanta Medical Shelter (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+    Shelter("Mesa Lantern Shelter (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            wheelchair_accessible=True, oxygen_power=True, lat=32.8262, lng=-117.1035, short="Mesa Lantern"),
+    Shelter("Quail Ridge Community Shelter (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            wheelchair_accessible=True, pets_allowed=True, lat=32.8298, lng=-117.0905, short="Quail Ridge"),
+    Shelter("Sage Hollow Medical Shelter (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
             wheelchair_accessible=True, oxygen_power=True, medical_staff=True, lat=32.8178, lng=-117.1115,
-            short="Medical"),
-    Shelter("Mission Trails Equestrian Staging Area (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
-            pets_allowed=True, large_animals=True, lat=32.8335, lng=-117.0800, short="Equestrian"),
+            short="Sage Hollow"),
+    Shelter("Canyon Lark Equestrian Grounds (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            pets_allowed=True, large_animals=True, lat=32.8335, lng=-117.0800, short="Canyon Lark"),
 ]
 
 LARGE_ANIMALS = re.compile(r"\b(horse|horses|pony|ponies|cow|cows|cattle|goat|goats|sheep|pig|pigs|llama|llamas|"
