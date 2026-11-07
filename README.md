@@ -91,11 +91,19 @@ cp .env.example .env        # add GEMINI_API_KEY (and Twilio settings for real c
 uvicorn app.main:app --port 8000
 ```
 
-Open http://localhost:8000 and press **Start**. With no Twilio settings, every resident is simulated and autopilot plays their scripted answers, so the whole demo runs on one laptop.
+Open http://localhost:8000 and press **Start**. With no Twilio settings, every resident is simulated and autopilot plays their scripted answers, so the whole demo runs on one laptop. Pressing **Start** again while a campaign is running does nothing (the API returns `{"ok": true, "already_running": true}`), so a double-click can't wipe answers. Press **Reset** to start over.
+
+**Before a demo, run the preflight check:**
+
+```bash
+python scripts/preflight.py
+```
+
+It lists which settings are set (never their values), makes one Gemini call and reports how long it took, and checks the Twilio credentials read-only. It never places a call or sends a text. It ends with READY or NOT READY. A restricted Twilio API key shows as "authenticates (code 70004)", which is fine. While the server is running, `GET /api/health` gives the same readiness at a glance: `{"ok": true, "gemini": bool, "twilio": bool, "model": str, "autopilot": bool}`. `twilio` is true only when real calls are actually on.
 
 ## Real phone calls with Twilio
 
-1. **Get a number.** In the Twilio console, buy or use a voice-capable number and put it in `TWILIO_FROM_NUMBER`, along with `TWILIO_ACCOUNT_SID` (starts with `AC`) and `TWILIO_AUTH_TOKEN`. You can use an API key instead of the auth token for placing calls and texts: set `TWILIO_API_KEY_SID` (starts with `SK`) and `TWILIO_API_KEY_SECRET`. You still need the account SID either way. Twilio signs its webhooks with the auth token, so with an API key alone, webhook signature checks are skipped. Add the auth token too if you want them.
+1. **Get a number.** In the Twilio console, buy or use a voice-capable number and put it in `TWILIO_FROM_NUMBER` as a full E.164 number like `+16195550100` (real calls stay off until it is; the `+1` placeholder doesn't count), along with `TWILIO_ACCOUNT_SID` (starts with `AC`) and `TWILIO_AUTH_TOKEN`. You can use an API key instead of the auth token for placing calls and texts: set `TWILIO_API_KEY_SID` (starts with `SK`) and `TWILIO_API_KEY_SECRET`. You still need the account SID either way. Twilio signs its webhooks with the auth token, so with an API key alone, webhook signature checks are skipped. Add the auth token too if you want them.
 2. **Trial accounts** can only call and text **Verified Caller IDs**, so verify each teammate's phone in the console first. Trial calls also play a "press any key" message before ours; tell whoever answers to press a key. Upgrading (about $20) removes both limits.
 3. **Open a tunnel** so Twilio can reach your laptop:
    ```bash
@@ -122,6 +130,7 @@ Open http://localhost:8000 and press **Start**. With no Twilio settings, every r
 | Tool | Say something like |
 |---|---|
 | `evacuation_status` | "What's the evacuation status?" |
+| `system_check` | "Is Headcount ready?" (server up, Gemini on or off, calls real or simulated) |
 | `who_still_needs_help` | "Who still needs help?" |
 | `resident_status` | "What's Walter's status?" |
 | `start_evacuation_calls` | "Start the evacuation calls." (VoiceOS asks you to confirm, because this places real calls) |
@@ -183,7 +192,7 @@ Free-tier Gemini keys can return rate-limit errors (429) when many calls land at
 pytest -q
 ```
 
-62 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
+78 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
 
 ## Project layout
 
@@ -199,6 +208,7 @@ app/main.py          FastAPI server: board, simulator, and Twilio webhooks
 app/twilio_voice.py  outbound calls, TwiML, SMS, signature validation
 app/static/          board.html (dispatch board), phone.html (phone simulator)
 mcp_server.py        VoiceOS tools over the same HTTP API
+scripts/preflight.py demo readiness check (no calls or texts)
 tests/               engine, classifier, and webhook tests
 ```
 

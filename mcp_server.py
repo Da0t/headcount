@@ -190,12 +190,29 @@ def resident_status(name: str) -> str:
 
 
 @mcp.tool()
+def system_check() -> str:
+    """Say whether Headcount is ready: server up, Gemini on or off, real phone calls on or simulated, autopilot."""
+    try:
+        h = _request("GET", "/api/health")
+    except ServerDown:
+        return DOWN
+    if not h.get("ok"):
+        return "The Headcount server answered but says it isn't ready."
+    gemini = "Gemini speech understanding is on" if h.get("gemini") else "Gemini is off, so answers are read with keywords and the keypad"
+    twilio = "real phone calls are on" if h.get("twilio") else "phone calls are simulated"
+    auto = "Autopilot is on." if h.get("autopilot") else "Autopilot is off."
+    return f"Headcount is running. {gemini}, and {twilio}. {auto}"
+
+
+@mcp.tool()
 def start_evacuation_calls() -> str:
     """Start the evacuation campaign. This PLACES REAL PHONE CALLS to every resident mapped to a real number (and texts their families); everyone else is simulated. Confirm with the user before running."""
     try:
         resp = _request("POST", "/api/start")
     except ServerDown:
         return DOWN
+    if resp.get("already_running"):
+        return "The evacuation calls are already running. Ask me for the status anytime."
     if resp.get("ok"):
         return "Starting the evacuation calls now. Ask me for the status anytime."
     return "The server didn't confirm the start. Check the board."
