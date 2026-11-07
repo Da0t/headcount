@@ -1,0 +1,68 @@
+# Headcount pitch (2 minutes)
+
+Spoken lines are in plain text. *Stage directions are in italics.* Read at a normal pace, it runs about 1:50.
+
+## Script
+
+**0:00 · Maria**
+
+Santa Ana winds. An evacuation order goes out for Alpine. Maria Gonzalez is 81, on oxygen, has no car, and speaks Spanish. The alert reached her phone. Did she get out? Nobody knows.
+
+**0:20 · The gap**
+
+Alerts only go one way. Responders spend hours knocking on the doors of people who already left, while the people who can't leave sit and wait. Headcount closes the loop. It calls every older adult in the zone until each one is accounted for.
+
+**0:40 · Live demo**
+
+*Press **Start** on the board. Teammates' phones ring in the room.*
+
+Every resident gets a call, in their language.
+
+*A teammate answers as Maria, in Spanish: "No tengo carro y uso oxígeno."*
+
+She said it in her own words. The row flips to **needs a ride**, with "uses oxygen" for the driver.
+
+*The family text lands on another teammate's phone. Hold it up.*
+
+Her daughter Ana just got a text: her mom answered, needs a ride, and a responder has been told.
+
+*Point at Walter's row.*
+
+Walter never answers. Headcount doesn't guess. After three calls, the board says **send a person**, with his address.
+
+*Ask VoiceOS out loud: "Who still needs help?" Let it answer.*
+
+A responder in a truck can ask that without touching a screen.
+
+**1:35 · The rule**
+
+Gemini understands messy speech in two languages. Plain, tested rules decide who gets help, so every call can be explained.
+
+**1:50 · Close**
+
+*Point at the green banner.*
+
+"Every resident is accounted for or has a responder on the way." That's Headcount.
+
+## Judge Q&A prep
+
+**Who runs it? (SAP)**
+County emergency services, senior-services nonprofits, and assisted-living operators. They already keep lists of residents who need help evacuating. Headcount turns that list into calls.
+
+**What does it save? (SAP)**
+Responder hours. Door-knocking goes only to the people who need it (welfare checks, rides, medical), not to people who already left.
+
+**What's the metric? (SAP)**
+Minutes to account for every resident in a zone. The board tracks it live: total, unaccounted, done.
+
+**Where does voice come in? (VoiceOS)**
+Both ends. Voice in for residents who can't use apps: a plain phone call they answer by talking or pressing 1, 2, or 3. Voice out for responders through the MCP server: "who still needs help?", "what's Walter's status?", "start the calls" (which asks for confirmation first, since it places real calls).
+
+**Why not let the AI decide?**
+Auditability and trust. Gemini only turns speech into structured facts. Retries, welfare checks, priority, and who gets a text are plain Python with tests. If someone asks why a person went to Walter's door, the answer is "three unanswered calls", not "the model said so". When Gemini times out or is unsure, we fall back to keywords, then to a human callback.
+
+**Privacy and consent?**
+Opt-in resident lists from partner agencies. We store only what a responder needs: name, address, a few risk flags, and one emergency contact. Every resident in the demo is fictional unless mapped to a consenting teammate's phone. This is not an official alert system.
+
+**What's next?**
+More languages, TTY and relay support for deaf and hard-of-hearing residents, and a pilot with one senior-living community.
