@@ -4,6 +4,8 @@
 
 Built at AIC at UC San Diego Hack for Humanity (MLH), November 7, 2026.
 
+**Live demo:** [headcount-demo.vercel.app](https://headcount-demo.vercel.app) (dispatch board) and [/phone](https://headcount-demo.vercel.app/phone) (phone simulator). This is a browser simulation: the full 20-resident campaign runs in mock mode with the real Mapbox map and a "Simulate incoming call" button, with no server, no Gemini and no Twilio. The real call flow (Twilio calls and texts, Gemini understanding) runs on the server; see Quick start.
+
 ## The problem
 
 Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and nobody closes the loop on who actually got out. Responders end up knocking on the doors of people who already left, while the people who can't leave on their own wait. Many of them are older adults on landlines who can't use apps: no car, on oxygen, in a wheelchair, living alone, sometimes speaking only Spanish.
