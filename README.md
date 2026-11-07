@@ -6,7 +6,7 @@ Built at AIC at UC San Diego Hack for Humanity (MLH), November 7, 2026.
 
 ## The problem
 
-Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and nobody closes the loop on who actually got out. Responders end up knocking on the doors of people who left hours ago, while the people who can't leave on their own wait. Those people are most often older adults on landlines who can't use apps: no car, on oxygen, in a wheelchair, living alone, sometimes speaking only Spanish.
+Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and nobody closes the loop on who actually got out. Responders end up knocking on the doors of people who already left, while the people who can't leave on their own wait. Many of them are older adults on landlines who can't use apps: no car, on oxygen, in a wheelchair, living alone, sometimes speaking only Spanish.
 
 ## What it does
 
@@ -96,10 +96,11 @@ Open http://localhost:8000 and press **Start**. With no Twilio settings, every r
 **Before a demo, run the preflight check:**
 
 ```bash
-python scripts/preflight.py
+python scripts/preflight.py          # no Gemini call, no quota used
+python scripts/preflight.py --live   # also makes ONE Gemini call and reports its latency
 ```
 
-It lists which settings are set (never their values), makes one Gemini call and reports how long it took, and checks the Twilio credentials read-only. It never places a call or sends a text. It ends with READY or NOT READY. A restricted Twilio API key shows as "authenticates (code 70004)", which is fine. While the server is running, `GET /api/health` gives the same readiness at a glance: `{"ok": true, "gemini": bool, "twilio": bool, "model": str, "autopilot": bool}`. `twilio` is true only when real calls are actually on.
+It lists which settings are set (never their values) and checks the Twilio credentials read-only. With `--live`, it also makes one Gemini call and reports how long it took. It never places a call or sends a text. It ends with READY or NOT READY. A restricted Twilio API key shows as "authenticates (code 70004)", which is fine. While the server is running, `GET /api/health` gives the same readiness at a glance: `{"ok": true, "gemini": bool, "twilio": bool, "model": str, "autopilot": bool}`. `twilio` is true only when real calls are actually on.
 
 ## Real phone calls with Twilio
 
@@ -121,6 +122,7 @@ It lists which settings are set (never their values), makes one Gemini call and 
 ## Simulator and mock mode
 
 - **`/phone`** is a phone simulator. A teammate can answer any simulated resident's call from a laptop or phone, then type or speak the answer.
+- **If the server goes away**, the board says so ("Server unreachable, retrying every second"), keeps showing the last data with its time, and disables Start and Reset until it's back.
 - **`/?mock=1`** runs the board entirely in the browser with a fake campaign and no backend. Use it to rehearse, or as a fallback if the server dies.
 
 ## VoiceOS (voice for responders)
@@ -192,7 +194,7 @@ Free-tier Gemini keys can return rate-limit errors (429) when many calls land at
 pytest -q
 ```
 
-78 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
+85 tests, all passing with no API keys and without making any Gemini or Twilio calls. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
 
 ## Project layout
 
@@ -206,7 +208,7 @@ app/engine.py        call state machine: retries, welfare checks, texts
 app/seed.py          the 10 demo residents, plus residents_phones.json mapping
 app/main.py          FastAPI server: board, simulator, and Twilio webhooks
 app/twilio_voice.py  outbound calls, TwiML, SMS, signature validation
-app/static/          board.html (dispatch board), phone.html (phone simulator)
+app/static/          board.html (dispatch board), phone.html (phone simulator), headcount-api.js (shared API and mock layer)
 mcp_server.py        VoiceOS tools over the same HTTP API
 scripts/preflight.py demo readiness check (no calls or texts)
 tests/               engine, classifier, and webhook tests

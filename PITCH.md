@@ -10,7 +10,7 @@ Santa Ana winds. An evacuation order goes out for Alpine. Maria Gonzalez is 81, 
 
 **0:20 · The gap**
 
-Alerts only go one way. Responders spend hours knocking on the doors of people who already left, while the people who can't leave sit and wait. Headcount closes the loop. It calls every older adult in the zone until each one is accounted for.
+Alerts only go one way. Responders end up knocking on the doors of people who already left, while the people who can't leave sit and wait. Headcount closes the loop. It calls every older adult in the zone until each one is accounted for.
 
 **0:40 · Live demo**
 

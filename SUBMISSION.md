@@ -8,7 +8,7 @@ When an evacuation order goes out, Headcount phones every older adult in the zon
 
 ## The problem
 
-Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop on who actually got out. Responders spend hours knocking on the doors of people who already left, while the people who can't leave on their own wait. Those people are most often older adults: on oxygen, in a wheelchair, without a car, living alone, on a landline, sometimes speaking only Spanish. They can't use an app, and an alert can't tell anyone whether they made it out.
+Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop on who actually got out. Responders end up knocking on the doors of people who already left, while the people who can't leave on their own wait. Many of them are older adults: on oxygen, in a wheelchair, without a car, living alone, on a landline, sometimes speaking only Spanish. They can't use an app, and an alert can't tell anyone whether they made it out.
 
 ## What it does
 
@@ -29,7 +29,7 @@ Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop o
 - **Frontend:** plain HTML, CSS and JavaScript (no build step) for the dispatch board and phone simulator.
 - **Voice for responders:** an MCP server (`mcp_server.py`, Python MCP SDK) that VoiceOS launches over stdio. It reads the same HTTP API as the board.
 - **Testing:** pytest, with more than 80 tests that pass with no API keys. They cover the state machine, the priority formula, the classifier in both languages, the Twilio webhooks and full simulated campaigns.
-- **GitHub Copilot** (CLI) for explanations, extra tests and code review, logged in [COPILOT.md](COPILOT.md).
+- **GitHub Copilot** CLI, brought in for the second half of the build, for explanations, extra tests, code review and docstrings, logged in [COPILOT.md](COPILOT.md).
 - **Teamwork:** four parallel workstreams (engine and Gemini, Twilio and API, frontend, VoiceOS and docs) built against one written interface contract (`docs/briefs/`).
 
 ## Challenges we ran into
@@ -66,9 +66,10 @@ Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop o
 
 **Best Use of the Gemini API.** Gemini turns free speech in English or Spanish (text, or audio from the simulator) into a structured `CallReading` with an answer, companions, mobility, medical equipment, pets and a responder note, defined by a Pydantic schema whose field descriptions are Gemini's instructions (`app/classify.py`, `app/models.py`). It's wrapped in a timeout, a concurrency cap and a tested keyword fallback, so the AI makes every call smarter without ever being a single point of failure.
 
-**Best Use of GitHub Copilot.** We used Copilot CLI throughout development and logged every real interaction in [COPILOT.md](COPILOT.md):
+**Best Use of GitHub Copilot.** We brought in GitHub Copilot CLI for the second half of the build, after the core was working, for explanation, testing, code review and docs, and logged every real interaction in [COPILOT.md](COPILOT.md):
 - **Learn:** it traced how a stale Twilio webhook is kept from overwriting a newer answer, with line references.
 - **Test:** it wrote an extra classifier suite (`tests/test_classify_extra.py`) that found a real bug: negated injuries like "No me caí" were read as medical emergencies.
 - **Solve:** after we fixed that bug, it promoted those xfails to regression tests. A Copilot code review of the engine found a stale-attempt collision after reset and two reset and autopilot races, which we then fixed, with new engine tests (commit `1054de6`).
+- **Document:** it wrote the module and `score()` docstrings in `app/priority.py` that explain the priority formula, with a worked example (Walter scores 100 × 2.1 = 210) (commit `94673f5`).
 
 Copilot's own commits carry its co-author trailer, so its contributions can be checked in the git history.
