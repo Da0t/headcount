@@ -160,7 +160,7 @@ def texting(eng, rid=7, phone="+16195550107"):
 def test_state_has_assist_and_shelters_endpoint(api):
     c, _ = api
     st = c.get("/api/state").json()
-    assert all("assist" in row and set(row["assist"]) == {"transport", "shelter", "shelter_why", "needs"}
+    assert all("assist" in row and {"transport", "shelter", "shelter_why", "needs", "shelter_lat", "shelter_lng"} <= set(row["assist"])
                for row in st["residents"])
     sh = c.get("/api/accessibility").json()
     assert {x["name"] for x in sh} == set(BY_NAME)
