@@ -1296,10 +1296,13 @@ body.fs .map-card { height: calc(100vh - 236px); }
     return new Promise((resolve, reject) => {
       const css = document.createElement("link");
       css.rel = "stylesheet"; css.href = "https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_VER + "/mapbox-gl.css";
+      let cssDone = false, jsDone = false;
+      const ready = () => { if (cssDone && jsDone) (window.mapboxgl ? resolve() : reject(new Error("no mapboxgl"))); };
+      css.onload = css.onerror = () => { cssDone = true; ready(); };
       document.head.appendChild(css);
       const js = document.createElement("script");
       js.src = "https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_VER + "/mapbox-gl.js";
-      js.onload = () => (window.mapboxgl ? resolve() : reject(new Error("no mapboxgl")));
+      js.onload = () => { jsDone = true; ready(); };
       js.onerror = () => reject(new Error("mapbox load failed"));
       setTimeout(() => reject(new Error("mapbox timeout")), 9000);
       document.head.appendChild(js);
@@ -1315,6 +1318,8 @@ body.fs .map-card { height: calc(100vh - 236px); }
     mb.addControl(new window.mapboxgl.NavigationControl({ showCompass: false }), "top-right");
     mb.on("error", () => { if (!mbReady) { try { mb.remove(); } catch (e) { /* ignore */ } mb = null; mapMode = "svg"; if (last) renderSvgMap(last); } });
     mb.on("load", () => {
+      mb.resize();
+      fitZone(false);
       const empty = { type: "FeatureCollection", features: [] };
       mb.addSource("zone", { type: "geojson", data: { type: "Feature", properties: {}, geometry: mapCfg.zone } });
       mb.addLayer({ id: "zone-fill", type: "fill", source: "zone", paint: { "fill-color": "#f26b1d", "fill-opacity": 0.12 } });
@@ -1344,6 +1349,12 @@ body.fs .map-card { height: calc(100vh - 236px); }
       if (last) updateMap(last);
       if (!reduceMotion) requestAnimationFrame(animateMap);
     });
+  }
+  function fitZone(animate) {
+    const ring = (mapCfg.zone && mapCfg.zone.coordinates && mapCfg.zone.coordinates[0]) || [];
+    if (!mb || !ring.length) return;
+    const xs = ring.map((c) => c[0]), ys = ring.map((c) => c[1]);
+    mb.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 36, duration: animate ? 400 : 0 });
   }
   const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
   function vehiclePos(leg, t) { return lerp(leg.a, leg.b, reduceMotion ? 1 : ((t / 6000) + (leg.seed % 7) / 7) % 1); }
@@ -1432,13 +1443,14 @@ body.fs .map-card { height: calc(100vh - 236px); }
     document.body.classList.add("view-" + v);
     document.querySelectorAll(".view-switch button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === v ? "true" : "false"));
     storeSet("headcount-view", v);
-    if (mb) setTimeout(() => mb.resize(), 50);
+    if (mb) setTimeout(() => { mb.resize(); fitZone(true); }, 60);
   }
   function storeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
   function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   document.querySelectorAll(".view-switch button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
   setView(["split", "table", "map"].includes(storeGet("headcount-view")) ? storeGet("headcount-view") : "split");
-  document.addEventListener("fullscreenchange", () => { if (mb) setTimeout(() => mb.resize(), 120); });
+  document.addEventListener("fullscreenchange", () => { if (mb) setTimeout(() => { mb.resize(); fitZone(true); }, 150); });
+  if (window.ResizeObserver) new ResizeObserver(() => { if (mb) mb.resize(); }).observe($("map"));
   initMap();
 
   // ------------------------------------------------------------------ fullscreen / presentation mode
