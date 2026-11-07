@@ -68,7 +68,7 @@ main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px;
   width: 64px; height: 64px; border-radius: 50%; border: 0; cursor: pointer; display: flex; align-items: center;
   justify-content: center; color: #fff; font-weight: 600; font-size: 13px;
 }
-.round:focus-visible, .btn:focus-visible, .key:focus-visible, textarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .round.decline { background: var(--red); }
 .round.answer { background: var(--green); animation: ring 1.2s ease-in-out infinite; }
 .round[disabled] { opacity: .5; cursor: default; animation: none; }
@@ -129,7 +129,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
       <div class="title">Headcount <span>phone simulator</span></div>
       <span class="tag" id="mode">LIVE</span>
     </div>
-    <div class="hint">Turn Autopilot off on the <a id="boardLink" href="/" target="_blank" rel="noopener">board</a> to play residents yourself.</div>
+    <div class="hint" id="hint">Turn Autopilot off on the <a id="boardLink" href="/" target="_blank" rel="noopener">board</a> to play residents yourself.</div>
   </div>
   <div class="err" id="err" role="alert"></div>
 
@@ -145,7 +145,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
           <div class="sub" id="ic-sub"></div>
         </div>
       </div>
-      <div class="chat" id="chat"></div>
+      <div class="chat" id="chat" role="log" aria-live="polite" aria-label="Call transcript"></div>
       <div id="result"></div>
       <div id="controls">
         <div class="keys">
@@ -157,7 +157,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
         <textarea id="text" placeholder="Answer in your own words, English or Spanish" aria-label="Answer in your own words, English or Spanish"></textarea>
         <div style="height:8px"></div>
         <div class="row">
-          <button class="btn" id="speak" type="button">Speak</button>
+          <button class="btn" id="speak" type="button" aria-pressed="false">Speak</button>
           <button class="btn send" id="send" type="button">Send</button>
         </div>
         <div style="height:8px"></div>
@@ -169,13 +169,15 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
   <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
 </div>
 
+<script src="/static/headcount-api.js"></script>
 <script>
+/* View only. All server access goes through HeadcountAPI (app/static/headcount-api.js). */
 (function () {
   "use strict";
 
   const params = new URLSearchParams(location.search);
   const MOCK = params.get("mock") === "1";
-  const POLL_MS = 1000;
+  const api = HeadcountAPI.create({ mock: MOCK, phoneDemo: true });
   const LANG_CODE = { en: "en-US", es: "es-MX" };
 
   const $ = (id) => document.getElementById(id);
@@ -186,11 +188,13 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
   }
   function showErr(msg) {
     const el = $("err");
-    if (msg) { el.textContent = msg; el.classList.add("show"); } else { el.textContent = ""; el.classList.remove("show"); }
+    el.textContent = msg || "";
+    el.classList.toggle("show", !!msg);
   }
   if (MOCK) {
     $("mode").textContent = "MOCK"; $("mode").classList.add("mock");
     $("boardLink").href = "/?mock=1";
+    $("hint").textContent = "Mock mode: residents ring here one at a time, no server needed. Type or tap a key to answer.";
   }
 
   // ------------------------------------------------------------------ speech
@@ -200,97 +204,31 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = LANG_CODE[lang] || "en-US";
-      u.rate = 1;
       window.speechSynthesis.speak(u);
     } catch (e) { /* speech is a nice-to-have */ }
   }
   function stopSpeaking() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
 
-  // ------------------------------------------------------------------ mock backend
-  const Mock = (function () {
-    const PROMPT = "Hello Dorothy, this is Headcount, the evacuation check for your neighborhood. There is an evacuation order for your area. Please tell me, in your own words, are you out, or do you need help? You can also press 1 if you are out, 2 if you need a ride, or 3 if you need medical help.";
-    const ASK_AGAIN = "Sorry, I didn't catch that. Are you out, or do you need help? Press 1 if you are out, 2 for a ride, 3 for medical help.";
-    const CONFIRM = {
-      OUT: "Thank you. I've marked you as safely out. We'll let your family know. Stay safe.",
-      NEEDS_RIDE: "Thank you. I've marked that you need a ride, and a responder will come to you. If anyone is in danger right now, hang up and call 911.",
-      NEEDS_MEDICAL: "Thank you. I've marked that you need medical help, and responders are being told right now. If anyone is in danger right now, hang up and call 911.",
-      STAYING: "I understand you are staying. I've let responders know. If you change your mind, please leave as soon as you can.",
-    };
-    const CALLBACK = "Thank you. A person from our team will call you back shortly. If you are in danger, call 911.";
-    let call = null, unclear = 0;
-    function fresh() { call = { id: 3, name: "Dorothy Chen", first: "Dorothy", lang: "en", status: "CALLING", attempt: 1, prompt: PROMPT }; unclear = 0; }
-    fresh();
-    function guess(text) {
-      const t = text.toLowerCase();
-      if (/^\s*1\s*$/.test(t)) return ["OUT", "keypad"];
-      if (/^\s*2\s*$/.test(t)) return ["NEEDS_RIDE", "keypad"];
-      if (/^\s*3\s*$/.test(t)) return ["NEEDS_MEDICAL", "keypad"];
-      if (/(fell|hurt|breath|ambulance|me ca[ií]|herid|no puedo respirar|ambulancia)/.test(t)) return ["NEEDS_MEDICAL", "mock"];
-      if (/(ride|car|drive|wheelchair|can't walk|carro|transporte|silla de ruedas)/.test(t)) return ["NEEDS_RIDE", "mock"];
-      if (/(not leaving|staying|me quedo|no me voy)/.test(t)) return ["STAYING", "mock"];
-      if (/(out|left|safe|shelter|salimos|ya sal|estamos bien|a salvo)/.test(t)) return ["OUT", "mock"];
-      return ["UNCLEAR", "mock"];
-    }
-    return {
-      ringing() { return call && call.status !== "DONE" ? [Object.assign({}, call)] : []; },
-      answer() { if (!call || call.status !== "CALLING") { const e = new Error("409 no longer ringing"); e.status = 409; throw e; } call.status = "IN_CALL"; return { say: call.prompt }; },
-      decline() { call.status = "DONE"; setTimeout(fresh, 6000); return { ok: true }; },
-      say(text) {
-        const [answer, engine] = guess(text);
-        const reading = { answer, quote: text, responder_note: "", engine: engine === "keypad" ? "keypad" : "Gemini (mock)" };
-        if (answer === "UNCLEAR") {
-          unclear += 1;
-          if (unclear < 2) return { say: ASK_AGAIN, keep_listening: true, reading };
-          call.status = "DONE"; setTimeout(fresh, 6000);
-          return { say: CALLBACK, keep_listening: false, reading };
-        }
-        call.status = "DONE"; setTimeout(fresh, 6000);
-        return { say: CONFIRM[answer], keep_listening: false, reading };
-      },
-    };
-  })();
-
-  // ------------------------------------------------------------------ API
-  async function api(method, path, body) {
-    const res = await fetch(path, { method, body, headers: { Accept: "application/json" }, cache: "no-store" });
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* empty */ }
-    if (!res.ok) {
-      let detail = data && data.detail;
-      if (detail && typeof detail !== "string") detail = JSON.stringify(detail);
-      const err = new Error(detail || (res.status + " " + res.statusText));
-      err.status = res.status;
-      throw err;
-    }
-    return data;
-  }
-  const API = {
-    ringing: () => MOCK ? Mock.ringing() : api("GET", "/api/sim/ringing"),
-    answer: (c) => MOCK ? Mock.answer() : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/answer?attempt=" + encodeURIComponent(c.attempt)),
-    decline: (c, reason) => MOCK ? Mock.decline() : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/decline?attempt=" + encodeURIComponent(c.attempt) + "&reason=" + encodeURIComponent(reason)),
-    say: (c, form, text) => MOCK ? Mock.say(text) : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/say?attempt=" + encodeURIComponent(c.attempt), form),
-  };
-
   // ------------------------------------------------------------------ lobby
-  let active = null;        // the call we are in
+  let active = null;        // the Ringing entry we are in a call with
   let busy = false;
-  let pollTimer = null;
+  let offline = false;
   let lastCallsKey = "";
+  let shown = [];
 
   const PHONE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>';
+  const EMPTY = '<div class="empty"><div class="big">No incoming calls</div>Calls ring here when the board starts a campaign.</div>';
 
   function renderCalls(list) {
     const ringing = (list || []).filter((c) => c.status === "CALLING");
     const key = ringing.map((c) => c.id + ":" + c.attempt).join(",");
     if (key === lastCallsKey) return;
     lastCallsKey = key;
+    shown = ringing;
     const box = $("calls");
-    if (!ringing.length) {
-      box.innerHTML = '<div class="empty"><div class="big">No incoming calls</div>Calls ring here when the board starts a campaign.</div>';
-      return;
-    }
+    if (!ringing.length) { box.innerHTML = EMPTY; return; }
     box.innerHTML = ringing.map((c, i) =>
-      '<div class="call" data-i="' + i + '">' +
+      '<div class="call" data-i="' + i + '" role="group" aria-label="Incoming call from ' + esc(c.name) + '">' +
         '<div class="who">' + esc(c.name) + "</div>" +
         '<div class="sub">Incoming call · Headcount · attempt ' + esc(c.attempt) + "</div>" +
         '<div class="lang">' + (c.lang === "es" ? "Spanish speaker" : "English speaker") + "</div>" +
@@ -299,49 +237,44 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
           '<div class="round-wrap"><button class="round answer" type="button" data-act="answer" aria-label="Answer call from ' + esc(c.name) + '">' + PHONE_ICON + "</button>Answer</div>" +
         "</div>" +
       "</div>").join("");
-    box._calls = ringing;
   }
 
   $("calls").addEventListener("click", async (ev) => {
     const btn = ev.target.closest("button[data-act]");
     if (!btn || busy) return;
-    const card = btn.closest(".call");
-    const c = $("calls")._calls && $("calls")._calls[Number(card.dataset.i)];
+    const c = shown[Number(btn.closest(".call").dataset.i)];
     if (!c) return;
     busy = true;
-    card.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    btn.closest(".call").querySelectorAll("button").forEach((b) => { b.disabled = true; });
     showErr("");
     try {
       if (btn.dataset.act === "answer") {
-        const r = await API.answer(c);
+        const r = await api.simAnswer(c.id, c.attempt);
         enterCall(c, r && r.say);
       } else {
-        await API.decline(c, "declined");
+        await api.simDecline(c.id, c.attempt, "declined");
       }
     } catch (e) {
-      if (e.status === 409) showErr(c.name + " is no longer ringing.");
-      else showErr(e.message);
+      showErr(e.status === 409 ? c.name + " is no longer ringing." : e.message);
     } finally {
       busy = false;
       lastCallsKey = "";
-      poll();
+      poller.now();
     }
   });
 
-  async function poll() {
-    clearTimeout(pollTimer);
-    if (!active) {
-      try {
-        const list = await API.ringing();
-        renderCalls(list);
-        if ($("err").dataset.conn) { showErr(""); delete $("err").dataset.conn; }
-      } catch (e) {
-        showErr("Cannot reach the Headcount server (" + e.message + "). To rehearse without a backend, open this page with ?mock=1.");
-        $("err").dataset.conn = "1";
-      }
-    }
-    pollTimer = setTimeout(poll, POLL_MS);
-  }
+  const poller = HeadcountAPI.poll(() => (active ? Promise.resolve(null) : api.simRinging()), 1000, {
+    onData(list) {
+      if (offline) { offline = false; showErr(""); }
+      if (list) renderCalls(list);
+    },
+    onError(e, failures) {
+      if (failures < 2) return;
+      offline = true;
+      showErr("Server unreachable, retrying every second (" + failures + " failed)." +
+        (MOCK ? "" : " To rehearse without a backend, open this page with ?mock=1."));
+    },
+  });
 
   // ------------------------------------------------------------------ in call
   let recorder = null, chunks = [], stream = null;
@@ -381,12 +314,12 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
       $("incall").classList.remove("show");
       $("lobby").style.display = "";
       lastCallsKey = "";
-      poll();
+      poller.now();
     };
     if (delayMs) setTimeout(done, delayMs); else done();
   }
 
-  async function submit(form, shownText, plainText) {
+  async function submit(input, shownText) {
     if (!active || busy) return;
     busy = true;
     setControls(false);
@@ -394,7 +327,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
     if (shownText) bubble(shownText, "me");
     const c = active;
     try {
-      const r = await API.say(c, form, plainText || "");
+      const r = await api.simSay(c.id, c.attempt, input);
       if (r && r.say) { bubble(r.say, "them"); speak(r.say, c.lang); }
       if (r && r.keep_listening) {
         setControls(true);
@@ -413,7 +346,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
       }
     } catch (e) {
       showErr(e.message);
-      if (e.status === 409 || e.status === 404) { leaveCall(1500); }
+      if (e.status === 409 || e.status === 404) leaveCall(1500);
       else setControls(true);
     } finally {
       busy = false;
@@ -423,9 +356,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
   function sendText(text) {
     text = (text || "").trim();
     if (!text) { $("text").focus(); return; }
-    const fd = new FormData();
-    fd.append("text", text);
-    submit(fd, text, text);
+    submit({ text }, text);
   }
   $("send").addEventListener("click", () => sendText($("text").value));
   $("text").addEventListener("keydown", (ev) => {
@@ -439,11 +370,11 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
     const c = active;
     busy = true;
     stopSpeaking();
-    try { await API.decline(c, "hung up"); } catch (e) { showErr(e.message); }
+    try { await api.simDecline(c.id, c.attempt, "hung up"); } catch (e) { showErr(e.message); }
     finally { busy = false; leaveCall(0); }
   });
 
-  // voice: record with MediaRecorder and upload as form field "audio"
+  // voice: record with MediaRecorder and upload, so Gemini hears the actual voice
   function pickMime() {
     if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
     for (const m of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]) {
@@ -462,6 +393,7 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
     const b = $("speak");
     b.classList.remove("rec");
     b.textContent = "Speak";
+    b.setAttribute("aria-pressed", "false");
   }
   $("speak").addEventListener("click", async () => {
     if (!active) return;
@@ -491,18 +423,15 @@ footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border
       const blob = new Blob(chunks, { type });
       if (!blob.size) { showErr("Nothing was recorded. Try again."); return; }
       const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-      const fd = new FormData();
-      fd.append("audio", blob, "answer." + ext);
-      submit(fd, "(voice message)", "");
+      submit({ audio: blob, filename: "answer." + ext }, "(voice message)");
     };
     recorder.start();
     const b = $("speak");
     b.classList.add("rec");
     b.innerHTML = '<span class="rec-dot"></span>Stop and send';
+    b.setAttribute("aria-pressed", "true");
     setControls(true);
   });
-
-  poll();
 })();
 </script>
 </body>

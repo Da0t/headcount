@@ -100,7 +100,7 @@ header {
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 }
 .btn:hover { border-color: var(--muted); }
-.btn:focus-visible, .switch input:focus-visible + .track { outline: 2px solid var(--blue); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, .feed:focus-visible, .switch input:focus-visible + .track { outline: 3px solid var(--blue); outline-offset: 2px; }
 .btn-start {
   background: var(--btn-red); border-color: var(--btn-red); color: #fff; font-weight: 700;
   font-size: 16px; padding: 11px 18px;
@@ -146,6 +146,12 @@ header {
   border: 1px solid color-mix(in srgb, var(--red) 50%, transparent); color: var(--red); font-weight: 500;
 }
 .offline.show { display: block; }
+.notice {
+  display: none; margin: 12px 24px 0; padding: 10px 14px; border-radius: 8px; background: var(--amber-bg);
+  border: 1px solid color-mix(in srgb, var(--amber) 50%, transparent); color: var(--amber); font-weight: 500;
+}
+.notice.show { display: block; }
+body.stale .counters, body.stale .wrap { opacity: .55; filter: grayscale(.6); transition: opacity .3s; }
 @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ---------------------------------------------------------------- layout */
@@ -238,7 +244,8 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
   .counter { padding: 10px 14px 12px; }
   .counter .num { font-size: 32px; }
   .counter.big .num { font-size: 64px; }
-  .banner, .offline { margin: 12px 16px 0; font-size: 19px; }
+  .banner, .offline, .notice { margin: 12px 16px 0; }
+  .banner { font-size: 19px; }
   .wrap { padding: 12px 16px 20px; gap: 14px; }
   .row { grid-template-columns: 30px minmax(0, 1fr); }
   .rank { font-size: 17px; }
@@ -289,27 +296,30 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
   <span class="sub mono" id="banner-sub"></span>
 </div>
 <div class="offline" id="offline" role="alert"></div>
+<div class="notice" id="notice" role="status"></div>
 
 <div class="wrap">
   <section class="panel">
     <div class="panel-head"><span>Priority list</span><span id="list-sub">highest priority first</span></div>
-    <div id="list"><div class="empty">Waiting for data…</div></div>
+    <div id="list" aria-label="Residents by priority"><div class="empty">Waiting for data…</div></div>
   </section>
   <aside class="panel">
     <div class="panel-head"><span>Live feed</span><span id="feed-sub">newest first</span></div>
-    <div class="feed" id="feed"><div class="empty">No events yet. Press start to send the evacuation order.</div></div>
+    <div class="feed" id="feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Live event feed" tabindex="0"><div class="empty">No events yet. Press start to send the evacuation order.</div></div>
   </aside>
 </div>
 
 <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
 
+<script src="/static/headcount-api.js"></script>
 <script>
+/* View only. All server access goes through HeadcountAPI (app/static/headcount-api.js). */
 (function () {
   "use strict";
 
   const params = new URLSearchParams(location.search);
   const MOCK = params.get("mock") === "1";
-  const POLL_MS = 1000;
+  const api = HeadcountAPI.create({ mock: MOCK });
 
   // ------------------------------------------------------------------ helpers
   const $ = (id) => document.getElementById(id);
@@ -329,8 +339,7 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
   const statusClass = (s) => "s-" + (KNOWN.has(s) ? s : "PENDING");
   function clockText(sec) {
     sec = Math.max(0, Math.floor(sec));
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return m + ":" + String(s).padStart(2, "0");
+    return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
   }
   function timeOfDay(t) {
     const d = new Date(t * 1000);
@@ -341,8 +350,10 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
 
   // ------------------------------------------------------------------ theme
   function applyTheme(t) {
+    t = t === "light" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", t);
     $("theme").textContent = t === "dark" ? "Light" : "Dark";
+    $("theme").setAttribute("aria-label", "Switch to " + (t === "dark" ? "light" : "dark") + " theme");
   }
   applyTheme(params.get("theme") || storeGet("headcount-theme") || "dark");
   $("theme").addEventListener("click", () => {
@@ -352,203 +363,15 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
   });
   if (MOCK) $("phoneLink").href = "/phone?mock=1";
 
-  // ------------------------------------------------------------------ mock campaign
-  // A client-side copy of the seed cast and engine rules, so the board runs with no backend.
-  const Mock = (function () {
-    const ZONE = "Alpine (demo zone)";
-    const MAX_ATTEMPTS = 3, STAGGER = 1.5, RING = 7, GAP = 6;
-    const WEIGHT = { WELFARE_CHECK: 100, NEEDS_MEDICAL: 95, NEEDS_RIDE: 75, NEEDS_CALLBACK: 65, STAYING: 55,
-      CALLING: 40, IN_CALL: 40, RETRY_WAIT: 40, PENDING: 35, OUT: 0 };
-    const LIVE = new Set(["CALLING", "IN_CALL"]);
-    const UNACC = new Set(["PENDING", "CALLING", "IN_CALL", "RETRY_WAIT"]);
-    const EVLABEL = { OUT: "Out", NEEDS_RIDE: "Needs a ride", NEEDS_MEDICAL: "Needs medical help", STAYING: "Staying" };
-    const EVKIND = { OUT: "good", NEEDS_RIDE: "warn", STAYING: "warn", NEEDS_MEDICAL: "alert" };
-    const FAMILY = {
-      OUT: "{first} is accounted for and says they are out. Their words: \"{quote}\"",
-      NEEDS_RIDE: "{first} answered and needs a ride out. A responder has been told.",
-      NEEDS_MEDICAL: "{first} answered and needs medical help. Responders have been told.",
-      STAYING: "{first} answered and says they are staying home. Responders have been told.",
-      NEEDS_CALLBACK: "{first} answered but we could not understand. A person will call them back.",
-      WELFARE_CHECK: "We could not reach {first} after {n} calls, a responder is being sent.",
-    };
-    function R(answer, quote, note, extra) {
-      return Object.assign({ answer, people_with_them: 0, mobility_help: false, medical_equipment: [], pets: [],
-        where_they_are: "", quote, responder_note: note, engine: "Gemini (mock)" }, extra || {});
-    }
-    const SEED = [
-      { id: 1, name: "Maria Gonzalez", age: 81, address: "1420 Tavern Rd", lang: "es", oxygen: true, lives_alone: true,
-        contact_name: "Ana", contact_relation: "daughter",
-        script: ["no_answer", [R("NEEDS_RIDE", "Sí, aquí estoy. No tengo carro y uso oxígeno. Necesito que me ayuden a salir.",
-          "No car, uses oxygen. Needs a ride out.", { medical_equipment: ["oxygen"] })]] },
-      { id: 2, name: "Walter Briggs", age: 87, address: "3 Arnold Way", bedridden: true, lives_alone: true,
-        contact_name: "Linda", contact_relation: "niece", script: ["no_answer", "no_answer", "no_answer"] },
-      { id: 3, name: "Dorothy Chen", age: 76, address: "2210 Alpine Blvd", contact_name: "Kevin", contact_relation: "son",
-        script: [[R("OUT", "We're out, we're at my son's place in El Cajon.", "Out. At son's place in El Cajon.",
-          { where_they_are: "son's place in El Cajon" })]] },
-      { id: 4, name: "Frank Russo", age: 84, address: "915 Victoria Dr", mobility: true, contact_name: "Tony", contact_relation: "son",
-        script: [[R("NEEDS_RIDE", "My wife's in a wheelchair and I can't drive anymore. We need help getting out.",
-          "Two people, wife uses a wheelchair, cannot drive. Has a dog. Needs a wheelchair-capable ride.",
-          { people_with_them: 1, mobility_help: true, pets: ["dog"] })]] },
-      { id: 5, name: "James Whitaker", age: 79, address: "18 Harbison Canyon Rd", hearing: true,
-        script: ["decline", [R("STAYING", "I'm not leaving. I've got four horses here.",
-          "Refuses to leave, staying with 4 horses.", { pets: ["4 horses"] })]] },
-      { id: 6, name: "Rosa Medina", age: 90, address: "640 South Grade Rd", lang: "es", mobility: true, lives_alone: true,
-        contact_name: "Carmen", contact_relation: "granddaughter",
-        script: [[R("NEEDS_MEDICAL", "Me caí en la cocina y no me puedo levantar.",
-          "Fell in the kitchen and cannot get up. Send medical.", { mobility_help: true, where_they_are: "kitchen" })]] },
-      { id: 7, name: "George Patel", age: 72, address: "77 Marshall Rd", contact_name: "Priya", contact_relation: "daughter",
-        script: [[R("OUT", "1", "Pressed 1: out.", { engine: "keypad" })]] },
-      { id: 8, name: "Betty Lawson", age: 85, address: "302 Olive Ln", lives_alone: true, contact_name: "Susan", contact_relation: "daughter",
-        script: [[R("UNCLEAR", "Hmm? Who is this?", ""),
-          R("OUT", "Oh, the fire. Yes, I already left. I'm at the shelter at the high school.",
-            "Out. At the high school shelter.", { where_they_are: "shelter at the high school" })]] },
-      { id: 9, name: "Luis Herrera", age: 68, address: "1105 Japatul Valley Rd", lang: "es", contact_name: "Marco", contact_relation: "son",
-        script: ["no_answer", [R("OUT", "Ya salimos todos, estamos bien.", "Out, whole household left, all fine.")]] },
-      { id: 10, name: "Edna Morales", age: 93, address: "48 Viejas View Pl", oxygen: true, bedridden: true, lives_alone: true,
-        contact_name: "Ruth", contact_relation: "neighbor",
-        script: ["no_answer", [R("NEEDS_RIDE", "My caregiver didn't come today. I can't get out of bed by myself.",
-          "Bedridden, caregiver did not come, cannot get out of bed alone. Needs a ride with a lift.",
-          { mobility_help: true })]] },
-    ];
-
-    let residents = [], events = [], startedAt = null, autopilot = true, timers = [], gen = 0;
-    const now = () => Date.now() / 1000;
-    const rand = (a, b) => a + Math.random() * (b - a);
-
-    function fresh() {
-      residents = SEED.map((s) => Object.assign({ lang: "en" }, s, { status: "PENDING", attempts: 0, unclear: 0, reading: null,
-        family: "", channel: "", updated: now() }));
-    }
-    function later(sec, fn) {
-      const g = gen;
-      timers.push(setTimeout(() => { if (g === gen) fn(); }, sec * 1000));
-    }
-    function log(r, msg, kind) {
-      events.push({ t: now(), rid: r ? r.id : null, name: r ? r.name : null, kind, msg });
-    }
-    function touch(r, status) { if (status) r.status = status; r.updated = now(); }
-
-    function score(r) {
-      const rd = r.reading; let mult = 1; const why = [];
-      if (r.age >= 85) { mult += 0.4; why.push("age " + r.age); }
-      else if (r.age >= 75) { mult += 0.25; why.push("age " + r.age); }
-      const oxyCall = !!(rd && rd.medical_equipment.some((e) => e.toLowerCase().includes("oxygen")));
-      if (r.oxygen || oxyCall) { mult += 0.4; why.push("oxygen"); }
-      if (r.bedridden) { mult += 0.5; why.push("bedridden"); }
-      else if (r.mobility || (rd && rd.mobility_help)) { mult += 0.3; why.push("mobility"); }
-      if (r.lives_alone) { mult += 0.2; why.push("lives alone"); }
-      if (r.hearing) { mult += 0.15; why.push("hard of hearing"); }
-      const extra = rd ? Math.min(rd.people_with_them, 3) : 0;
-      if (extra > 0) { mult += 0.1 * extra; why.push("+" + extra + " with them"); }
-      return [Math.round(WEIGHT[r.status] * mult), why];
-    }
-
-    function textFamily(r) {
-      if (!r.contact_name) return;
-      const who = r.contact_relation ? r.contact_name + " (" + r.contact_relation + ")" : r.contact_name;
-      const body = "Headcount demo: " + FAMILY[r.status].replace("{first}", r.name.split(" ")[0])
-        .replace("{quote}", r.reading ? r.reading.quote : "").replace("{n}", r.attempts);
-      r.family = "Texted " + who + " (simulated)";
-      log(r, "Texted " + who + " (simulated): " + body, "family");
-    }
-
-    function dial(r) {
-      if (r.status !== "PENDING" && r.status !== "RETRY_WAIT") return;
-      r.attempts += 1; const attempt = r.attempts;
-      r.channel = "sim"; touch(r, "CALLING");
-      log(r, "Calling (simulated, attempt " + attempt + ").", "info");
-      later(RING, () => { if (r.status === "CALLING") noAnswer(r, attempt, "no answer"); });
-      const step = r.script[attempt - 1];
-      if (autopilot && step && step !== "no_answer") later(rand(2, 4), () => auto(r, attempt, step));
-    }
-    function noAnswer(r, attempt, reason) {
-      if (attempt !== r.attempts || !LIVE.has(r.status)) return;
-      if (r.attempts >= MAX_ATTEMPTS) {
-        touch(r, "WELFARE_CHECK");
-        log(r, "No answer after " + r.attempts + " calls. Welfare check: send a person to " + r.address + ".", "alert");
-        textFamily(r);
-      } else {
-        touch(r, "RETRY_WAIT");
-        log(r, "Call " + attempt + " missed (" + reason + "). Retrying in " + GAP + "s.", "warn");
-        later(GAP, () => dial(r));
-      }
-    }
-    function auto(r, attempt, step) {
-      if (attempt !== r.attempts || r.status !== "CALLING") return;
-      if (step === "decline") { noAnswer(r, attempt, "declined"); return; }
-      touch(r, "IN_CALL"); log(r, "Picked up (attempt " + attempt + ").", "info");
-      let delay = 0;
-      step.forEach((reading) => {
-        delay += rand(1.5, 2.5);
-        later(delay, () => {
-          if (attempt !== r.attempts || r.status !== "IN_CALL") return;
-          respond(r, reading);
-        });
-      });
-    }
-    function respond(r, reading) {
-      log(r, "Heard: “" + (reading.quote || "(nothing)") + "” (" + (reading.engine || "unknown") + ")", "speech");
-      if (reading.answer === "UNCLEAR") {
-        r.unclear += 1;
-        if (r.unclear >= 2) {
-          r.reading = reading; touch(r, "NEEDS_CALLBACK");
-          log(r, "Could not understand twice. A person needs to call back.", "warn");
-        } else { r.updated = now(); }
-        return;
-      }
-      r.reading = reading; touch(r, reading.answer);
-      log(r, (EVLABEL[reading.answer] + ". " + (reading.responder_note || reading.quote)).trim(), EVKIND[reading.answer]);
-      textFamily(r);
-    }
-
-    function reset() {
-      gen += 1; timers.forEach(clearTimeout); timers = [];
-      fresh(); events = []; startedAt = null;
-    }
-    function start() {
-      reset(); startedAt = now();
-      log(null, "Evacuation order received. Calling " + residents.length + " residents.", "start");
-      residents.forEach((r, i) => later(i * STAGGER, () => dial(r)));
-    }
-    function snapshot() {
-      const counts = {}; let unacc = 0;
-      const rows = residents.map((r) => {
-        const [s, why] = score(r);
-        counts[r.status] = (counts[r.status] || 0) + 1;
-        if (UNACC.has(r.status)) unacc += 1;
-        return { id: r.id, name: r.name, first: r.name.split(" ")[0], age: r.age, address: r.address, lang: r.lang,
-          status: r.status, attempts: r.attempts, channel: r.channel, score: s, why, reading: r.reading,
-          family: r.family, updated: r.updated, real_phone: false };
-      });
-      rows.sort((a, b) => (b.score - a.score) || a.name.localeCompare(b.name));
-      return { zone: ZONE, total: rows.length, unaccounted: unacc, done: startedAt !== null && unacc === 0,
-        started_at: startedAt, max_attempts: MAX_ATTEMPTS, twilio: false, gemini: true, autopilot, mock: true,
-        counts, residents: rows, events: events.slice() };
-    }
-    fresh();
-    return { start, reset, snapshot, setAutopilot(on) { autopilot = !!on; return autopilot; } };
-  })();
-
-  // ------------------------------------------------------------------ API
-  async function api(method, path) {
-    const res = await fetch(path, { method, headers: { Accept: "application/json" }, cache: "no-store" });
-    let body = null;
-    try { body = await res.json(); } catch (e) { /* empty */ }
-    if (!res.ok) {
-      const detail = body && body.detail ? (typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail)) : res.statusText;
-      throw new Error(res.status + " " + detail);
-    }
-    return body;
-  }
-  async function getState() { return MOCK ? Mock.snapshot() : api("GET", "/api/state"); }
-
   // ------------------------------------------------------------------ render
-  let last = null;
+  let last = null;          // last good State
+  let health = null;        // last /api/health, or null
+  let offline = false;
+  let lastOkAt = null;
   const prevStatus = new Map();
   const rowEls = new Map();
   const rowKeys = new Map();
   let shownUnacc = null, unaccAnim = null;
-  let feedKey = "";
 
   function setUnaccounted(target) {
     const el = $("n-unaccounted");
@@ -558,26 +381,45 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
     cancelAnimationFrame(unaccAnim);
     const step = (t) => {
       const p = Math.min(1, (t - t0) / dur);
-      const v = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
-      el.textContent = v;
+      el.textContent = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
       if (p < 1) unaccAnim = requestAnimationFrame(step);
     };
     shownUnacc = target;
     unaccAnim = requestAnimationFrame(step);
   }
 
+  function renderTags(st) {
+    const tags = [];
+    if (offline) tags.push('<span class="tag bad">SERVER: UNREACHABLE</span>');
+    if (MOCK) tags.push('<span class="tag off">MOCK DATA</span>');
+    const twilio = health ? !!health.twilio : !!(st && st.twilio);
+    tags.push(twilio ? '<span class="tag on">PHONE: TWILIO LIVE</span>' : '<span class="tag">PHONE: SIM</span>');
+    if (MOCK) tags.push('<span class="tag">GEMINI: MOCK</span>');
+    else {
+      const gemini = health ? !!health.gemini : !!(st && st.gemini);
+      const model = health && health.model ? " · " + esc(health.model) : "";
+      tags.push(gemini ? '<span class="tag on" title="Gemini key set; rows show which engine actually heard each answer">GEMINI: ON' + model + "</span>"
+        : '<span class="tag off">GEMINI: OFF (keywords)</span>');
+    }
+    const html = tags.join("");
+    if ($("tags").innerHTML !== html) $("tags").innerHTML = html;
+  }
+
   function renderHeader(st) {
     $("zone").textContent = st.zone || "";
     document.title = "Headcount · " + (st.zone || "Dispatch board");
-    const tags = [];
-    if (MOCK) tags.push('<span class="tag off">MOCK DATA</span>');
-    tags.push(st.twilio ? '<span class="tag on">PHONE: TWILIO LIVE</span>' : '<span class="tag">PHONE: SIM</span>');
-    if (MOCK) tags.push('<span class="tag">GEMINI: MOCK</span>');
-    else tags.push(st.gemini ? '<span class="tag on">GEMINI: ON</span>' : '<span class="tag off">GEMINI: OFF (keywords)</span>');
-    const html = tags.join("");
-    if ($("tags").innerHTML !== html) $("tags").innerHTML = html;
+    renderTags(st);
     const ap = $("autopilot");
-    if (document.activeElement !== ap && !apPending) ap.checked = !!st.autopilot;
+    if (!apPending) ap.checked = !!st.autopilot;
+    renderStart(st);
+  }
+
+  function renderStart(st) {
+    const b = $("start");
+    const running = !!(st && st.started_at && !st.done);
+    b.disabled = startBusy || running || offline;
+    b.textContent = running ? "Calls in progress" : (st && st.done ? "Start again" : "Evacuation order: start calls");
+    $("reset").disabled = resetBusy || offline;
   }
 
   function renderClock(st) {
@@ -619,12 +461,13 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
     const att = Math.max(0, r.attempts || 0), max = Math.max(maxAttempts || 3, att);
     const dots = "●".repeat(att) + "○".repeat(max - att);
     const pulse = r.status === "CALLING" ? " pulse" : "";
-    let h = '<div class="rank">' + rank + "</div>";
+    let h = '<div class="rank" aria-label="Priority ' + rank + '">' + rank + "</div>";
     h += '<div class="who">';
     h += '<div class="name-line"><span class="name">' + esc(r.name) + '</span><span class="age">' + esc(r.age) + "</span>";
     if (r.real_phone) h += '<span class="chip real">REAL PHONE</span>';
     h += "</div>";
-    h += '<div class="meta">' + esc(r.address) + " · " + esc(LANG_NAME[r.lang] || r.lang || "") + "</div>";
+    const lang = LANG_NAME[r.lang] || r.lang || "";
+    h += '<div class="meta">' + esc(r.address) + (lang ? " · " + esc(lang) : "") + "</div>";
     if (why) h += '<div class="why">' + why + "</div>";
     if (rd && rd.responder_note) h += '<div class="note">' + esc(rd.responder_note) + "</div>";
     if (rd && rd.quote) h += '<div class="quote">“' + esc(rd.quote) + "”</div>";
@@ -638,29 +481,32 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
     h += "</div>";
     h += '<div class="side"><span class="badge ' + statusClass(r.status) + pulse + '"><span class="dot"></span>' +
       esc(LABEL[r.status] || r.status) + "</span>";
-    h += '<span class="dots" title="' + att + " of " + max + ' calls" aria-label="' + att + " of " + max + ' calls">' + dots + "</span></div>";
+    h += '<span class="dots" role="img" aria-label="' + att + " of " + max + ' calls placed">' + dots + "</span></div>";
     return h;
   }
 
   function renderList(st) {
     const list = $("list");
-    const rows = st.residents || [];
-    if (!rows.length) { list.innerHTML = '<div class="empty">No residents in this zone.</div>'; rowEls.clear(); return; }
+    const rows = st.residents || [];   // already sorted by the server: never re-sort
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty">No residents in this zone.</div>';
+      rowEls.clear(); rowKeys.clear();
+      return;
+    }
     if (list.querySelector(".empty")) list.innerHTML = "";
     const seen = new Set();
     rows.forEach((r, i) => {
       seen.add(r.id);
       let el = rowEls.get(r.id);
-      if (!el) { el = document.createElement("div"); rowEls.set(r.id, el); }
+      if (!el) { el = document.createElement("article"); rowEls.set(r.id, el); }
       const html = rowHtml(r, i + 1, st.max_attempts);
       if (rowKeys.get(r.id) !== html) { el.innerHTML = html; rowKeys.set(r.id, html); }
-      el.className = "row " + statusClass(r.status);
+      el.className = "row " + statusClass(r.status) + (el._flash ? " flash" : "");
       const before = prevStatus.get(r.id);
       if (before !== undefined && before !== r.status) {
         el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
-        clearTimeout(el._flash); el._flash = setTimeout(() => { el.classList.remove("flash"); el._flash = null; }, 1700);
-      } else if (el._flash) {
-        el.classList.add("flash");
+        clearTimeout(el._flash);
+        el._flash = setTimeout(() => { el.classList.remove("flash"); el._flash = null; }, 1700);
       }
       prevStatus.set(r.id, r.status);
       if (list.children[i] !== el) list.insertBefore(el, list.children[i] || null);
@@ -670,22 +516,42 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
     }
   }
 
+  // The feed is a live log: new events are prepended (not re-rendered) so screen readers
+  // announce only what is new.
+  const evKey = (e) => e.t + "|" + e.rid + "|" + e.msg;
+  let feedNewest = null, feedCount = 0;
+  function evEl(e) {
+    const el = document.createElement("div");
+    const kind = KINDS.has(e.kind) ? e.kind : "info";
+    el.className = "ev k-" + kind;
+    el.innerHTML = '<span class="t">' + esc(timeOfDay(e.t)) + "</span>" +
+      (e.name ? '<span class="n">' + esc(e.name) + "</span>" : "") + '<span class="m">' + esc(e.msg) + "</span>";
+    return el;
+  }
   function renderFeed(st) {
     const evs = st.events || [];
-    const lastEv = evs[evs.length - 1];
-    const key = evs.length + ":" + (lastEv ? lastEv.t + lastEv.msg : "");
-    if (key === feedKey) return;
-    feedKey = key;
     const feed = $("feed");
-    if (!evs.length) { feed.innerHTML = '<div class="empty">No events yet. Press start to send the evacuation order.</div>'; return; }
-    const out = [];
-    for (let i = evs.length - 1; i >= 0 && out.length < 150; i--) {
-      const e = evs[i];
-      const kind = KINDS.has(e.kind) ? e.kind : "info";
-      out.push('<div class="ev k-' + kind + '"><span class="t">' + esc(timeOfDay(e.t)) + "</span>" +
-        (e.name ? '<span class="n">' + esc(e.name) + "</span>" : "") + '<span class="m">' + esc(e.msg) + "</span></div>");
+    if (!evs.length) {
+      if (feedNewest !== null || !feed.querySelector(".empty")) {
+        feed.innerHTML = '<div class="empty">No events yet. Press start to send the evacuation order.</div>';
+      }
+      feedNewest = null; feedCount = 0;
+      return;
     }
-    feed.innerHTML = out.join("");
+    const newestKey = evKey(evs[evs.length - 1]);
+    if (newestKey === feedNewest) return;
+    let idx = -1;
+    if (feedNewest !== null) {
+      for (let i = evs.length - 1; i >= 0; i--) { if (evKey(evs[i]) === feedNewest) { idx = i; break; } }
+    }
+    const fresh = idx === -1 ? evs : evs.slice(idx + 1);
+    if (idx === -1) { feed.innerHTML = ""; feedCount = 0; }
+    const frag = document.createDocumentFragment();
+    for (let i = fresh.length - 1; i >= 0; i--) frag.appendChild(evEl(fresh[i]));
+    feed.insertBefore(frag, feed.firstChild);
+    feedCount += fresh.length;
+    while (feedCount > 150 && feed.lastChild) { feed.removeChild(feed.lastChild); feedCount -= 1; }
+    feedNewest = newestKey;
   }
 
   function render(st) {
@@ -698,57 +564,83 @@ footer { padding: 4px 24px 28px; color: var(--faint); font-size: 13.5px; }
     renderFeed(st);
   }
 
-  // ------------------------------------------------------------------ polling
-  let failures = 0, pollTimer = null;
-  function showOffline(msg) {
+  // ------------------------------------------------------------------ connection state
+  function setOffline(on, err, failures) {
+    const changed = on !== offline;
+    offline = on;
+    document.body.classList.toggle("stale", on);
     const el = $("offline");
-    if (msg) { el.textContent = msg; el.classList.add("show"); } else { el.classList.remove("show"); }
-  }
-  async function poll() {
-    clearTimeout(pollTimer);
-    try {
-      const st = await getState();
-      failures = 0; showOffline("");
-      render(st);
-    } catch (e) {
-      failures += 1;
-      if (failures >= 2) showOffline("Lost connection to the Headcount server (" + e.message + "). Retrying every second. To rehearse without a backend, open this page with ?mock=1.");
+    if (on) {
+      const since = lastOkAt ? " Showing data from " + timeOfDay(lastOkAt) + "." : "";
+      el.textContent = "Server unreachable, retrying every second (" + failures + " failed)." + since +
+        (MOCK ? "" : " To rehearse without a backend, open this page with ?mock=1.") +
+        (err && err.status ? " Last error: " + err.message : "");
+      el.classList.add("show");
+    } else {
+      el.classList.remove("show");
+      el.textContent = "";
     }
-    pollTimer = setTimeout(poll, POLL_MS);
+    if (changed) { renderTags(last); renderStart(last); }
   }
+  function flash(msg) {
+    const el = $("notice");
+    el.textContent = msg || "";
+    el.classList.toggle("show", !!msg);
+    clearTimeout(el._t);
+    if (msg) el._t = setTimeout(() => el.classList.remove("show"), 6000);
+  }
+
+  const poller = HeadcountAPI.poll(api.getState, 1000, {
+    onData(st) { lastOkAt = Date.now() / 1000; if (offline) setOffline(false); render(st); },
+    onError(e, failures) { if (failures >= 2) setOffline(true, e, failures); },
+  });
+  HeadcountAPI.poll(api.health, 10000, {
+    onData(h) { health = h; renderTags(last); },
+    onError() { /* the state poll already reports connection problems */ },
+  });
   setInterval(() => renderClock(last), 250);
 
   // ------------------------------------------------------------------ controls
-  async function action(btn, fn) {
-    btn.disabled = true;
-    try { await fn(); showOffline(""); }
-    catch (e) { showOffline("Action failed: " + e.message); }
-    finally { btn.disabled = false; poll(); }
-  }
-  $("start").addEventListener("click", (ev) => action(ev.currentTarget, async () => {
-    if (MOCK) Mock.start(); else await api("POST", "/api/start");
-  }));
-  $("reset").addEventListener("click", (ev) => action(ev.currentTarget, async () => {
-    if (MOCK) Mock.reset(); else await api("POST", "/api/reset");
-    shownUnacc = null; prevStatus.clear();
-  }));
-  let apPending = false;
+  let startBusy = false, resetBusy = false, apPending = false;
+
+  $("start").addEventListener("click", async () => {
+    if (startBusy) return;                     // no double-start on fast clicks
+    if (last && last.started_at && !last.done) return;
+    startBusy = true; renderStart(last);
+    try {
+      const r = await api.start();
+      if (r && r.already_running) flash("A campaign is already running.");
+    } catch (e) {
+      flash("Could not start: " + e.message);
+    } finally {
+      startBusy = false;
+      poller.now();
+    }
+  });
+  $("reset").addEventListener("click", async () => {
+    if (resetBusy) return;
+    resetBusy = true; renderStart(last);
+    try {
+      await api.reset();
+      shownUnacc = null; prevStatus.clear();
+    } catch (e) {
+      flash("Could not reset: " + e.message);
+    } finally {
+      resetBusy = false;
+      poller.now();
+    }
+  });
   $("autopilot").addEventListener("change", async (ev) => {
-    const on = ev.currentTarget.checked;
+    const box = ev.currentTarget, on = box.checked;
     apPending = true;
     try {
-      if (MOCK) Mock.setAutopilot(on);
-      else {
-        const r = await api("POST", "/api/autopilot?on=" + (on ? "true" : "false"));
-        ev.currentTarget.checked = !!(r && r.autopilot);
-      }
+      const r = await api.setAutopilot(on);
+      box.checked = !!(r && r.autopilot);
     } catch (e) {
-      ev.currentTarget.checked = !on;
-      showOffline("Could not change autopilot: " + e.message);
+      box.checked = !on;
+      flash("Could not change autopilot: " + e.message);
     } finally { apPending = false; }
   });
-
-  poll();
 })();
 </script>
 </body>
