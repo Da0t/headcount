@@ -1,4 +1,10 @@
-"""Who goes first. Plain arithmetic, no AI: status weight x vulnerability multiplier."""
+"""Rank residents for response using status weight and vulnerability.
+
+The score is the status weight multiplied by a vulnerability multiplier. The
+multiplier starts at 1.0 and increases for age, oxygen needs, mobility limits,
+living alone, hearing difficulty, and people with the resident. Higher scores
+mean help should be sent sooner.
+"""
 from __future__ import annotations
 
 from app.models import Resident, Status
@@ -18,7 +24,16 @@ WEIGHT = {
 
 
 def score(r: Resident) -> tuple[int, list[str]]:
-    """Return (priority score, list of reasons). Higher means send help sooner."""
+    """Return the priority score and the reasons that increased vulnerability.
+
+    The formula is status weight times vulnerability multiplier. The status
+    weight reflects urgency (for example, WELFARE_CHECK is 100). The multiplier
+    starts at 1.0 and adds factors for resident vulnerabilities, including age,
+    oxygen needs, mobility limits, living alone, hearing difficulty, and
+    companions. For example, Walter's WELFARE_CHECK weight is 100; at age 87
+    (+0.4), bedridden (+0.5), and living alone (+0.2), his multiplier is 2.1
+    and his score is 100 x 2.1 = 210.
+    """
     reading = r.reading
     mult = 1.0
     why: list[str] = []
