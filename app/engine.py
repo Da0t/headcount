@@ -113,6 +113,45 @@ class Engine:
         self.events = []
         self.started_at = None
 
+    def find_by_phone(self, phone: str) -> Optional[Resident]:
+        """Match a caller ID to a resident (last 10 digits, so +1 and formatting don't matter)."""
+        digits = "".join(ch for ch in (phone or "") if ch.isdigit())[-10:]
+        if not digits:
+            return None
+        for r in self.residents.values():
+            if r.phone and "".join(ch for ch in r.phone if ch.isdigit())[-10:] == digits:
+                return r
+        return None
+
+    def add_caller(self, phone: str, lat: float = 0.0, lng: float = 0.0) -> Resident:
+        """An unknown number called in: add them to the board so they get the same help as everyone else."""
+        rid = max(self.residents, default=0) + 1
+        tail = "".join(ch for ch in (phone or "") if ch.isdigit())[-4:] or "????"
+        r = Resident(rid, f"Caller ...{tail}", 0, "Location unknown: ask on the call", phone=phone, lat=lat, lng=lng)
+        self.residents[rid] = r
+        self.log(r, "New caller added from an incoming call.", "start")
+        return r
+
+    def begin_inbound(self, rid: int) -> int:
+        """A resident called US. Start a fresh attempt that is already in progress; returns its attempt token.
+
+        Same rules afterwards: respond() classifies, unclear twice means a callback, and a hang-up
+        without an answer counts as a missed call that we call back.
+        """
+        r = self.residents[rid]
+        for kind in ("dial", "ring", "auto"):
+            self._cancel(rid, kind)
+        if self.started_at is None:
+            self.started_at = time.time()
+        r.attempts += 1
+        r.unclear_count = 0
+        r.channel = "twilio"
+        r.call_sid = ""
+        self._touch(r, Status.IN_CALL)
+        self.log(r, f"Incoming call from {r.name} (attempt {r.attempts}).", "alert")
+        self._schedule(rid, "ring", 150, self.no_answer, rid, r.attempts, "inbound call ended without an answer")
+        return r.attempts
+
     async def call_one(self, rid: int) -> bool:
         """Demo helper: (re)start calls for ONE resident without running the whole campaign.
 
