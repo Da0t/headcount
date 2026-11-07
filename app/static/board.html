@@ -420,6 +420,29 @@ body.fs .map-card { height: calc(100vh - 236px); }
 .mk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mk.base { background: var(--red); border-color: var(--red); color: #fff; }
 .mk-label { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--text-2); background: rgba(255, 255, 255, .85); padding: 0 4px; border-radius: 4px; }
+.toast {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px;
+  background: #1c1d21; color: #fff; padding: 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(20, 20, 30, .25);
+  font-weight: 500; max-width: calc(100vw - 32px); animation: toastin .35s ease-out both;
+}
+.toast[hidden] { display: none; }
+.toast b { font-weight: 700; }
+.toast .ti { width: 22px; height: 22px; border-radius: 50%; background: var(--red); display: grid; place-items: center; flex: none; }
+.toast .ti svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 2; }
+@keyframes toastin { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.plus1 { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 999px; padding: 1px 7px; animation: pop 2.4s ease-out both; }
+@keyframes pop { 0% { opacity: 0; transform: scale(.6); } 12% { opacity: 1; transform: scale(1.15); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.newpill { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; letter-spacing: .07em; color: #fff; background: var(--accent); border-radius: 4px; padding: 0 5px; vertical-align: 1px; }
+.newpill.calledin { background: var(--red); }
+tbody tr.arrive { animation: arrive .7s ease-out both, glow 8s ease-out both; }
+tbody tr.arrive td { animation: glow 8s ease-out both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes glow { 0%, 25% { background: #ffe3cf; } 100% { background: transparent; } }
+.drop-pin { width: 22px; height: 22px; border-radius: 50%; background: var(--red); border: 3px solid #fff; box-shadow: 0 6px 14px rgba(0,0,0,.3); animation: drop 1.1s cubic-bezier(.3,1.5,.5,1) both, fadeaway .5s 1.6s ease-in forwards; }
+@keyframes drop { from { transform: translateY(-120px); opacity: 0; } 60% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes fadeaway { to { opacity: 0; } }
+.fb-drop { animation: fbdrop 1.1s cubic-bezier(.3,1.5,.5,1) both; transform-box: fill-box; transform-origin: center; }
+@keyframes fbdrop { from { transform: translateY(-80px); opacity: 0; } to { transform: none; opacity: 1; } }
 .inbound-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
   color: #fff; background: var(--red); border-radius: 999px; padding: 2px 9px; }
 .inbound-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1s ease-in-out infinite; }
@@ -547,6 +570,7 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
         <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">Search residents</span><input id="q" type="search" placeholder="Search name, address, note" autocomplete="off"></label>
         <div class="view-switch" role="group" aria-label="Layout"><button type="button" data-view="split" aria-pressed="true">Split</button><button type="button" data-view="table" aria-pressed="false">Table</button><button type="button" data-view="map" aria-pressed="false">Map</button></div>
         <button class="ghost" id="autopilot" type="button" aria-pressed="false" title="When on, simulated residents answer by themselves"><span class="switch" aria-hidden="true"></span>Autopilot</button>
+        <button class="ghost" id="simIncoming" type="button" title="A simulated person calls the Headcount number (free, no Twilio)"><svg class="i"><use href="#i-phone"/></svg>Simulate incoming call</button>
         <button class="ghost" id="reset" type="button"><svg class="i"><use href="#i-reset"/></svg>Reset</button>
         <a class="ghost outline" id="phoneBtn" href="/phone" target="_blank" rel="noopener"><svg class="i"><use href="#i-phone"/></svg>Play a resident</a>
       </div>
@@ -573,6 +597,7 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
   </main>
 </div>
+<div class="toast" id="toast" role="status" aria-live="assertive" hidden><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg></span><span id="toast-text"></span></div>
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-name" hidden>
   <div class="dr-head">
@@ -668,6 +693,8 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
   // ------------------------------------------------------------------ state
   let last = null, health = null, offline = false, lastOkAt = null;
   const inboundIds = new Set();            // residents who called US (an "Incoming call from" alert)
+  const arrivals = new Map();              // rid -> {kind: "new" | "calledin", until}
+  let knownIds = null, lastTotal = null;
   const seenInbound = new Set();
   const pageStart = Date.now() / 1000 - 5;  // ignore inbound alerts older than this page
   let tab = "all", query = "";
@@ -863,6 +890,7 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
       '<td class="c-rank">' + rank + "</td>" +
       '<td title="' + esc(r.name + ", " + r.age + " · " + (LANG_NAME[r.lang] || r.lang || "") + " · " + r.address) + '"><div class="resline"><span class="res-name">' + esc(r.name) + '</span><span class="res-meta">' + esc(r.age) + "</span>" +
         (r.lang === "es" ? '<span class="lang" title="Spanish speaker">ES</span>' : "") + (r.contact_mode === "text" ? '<span class="lang text" title="Checks in by text message">TEXT</span>' : "") +
+        (arrivals.has(r.id) ? (arrivals.get(r.id).kind === "new" ? '<span class="newpill">NEW</span>' : '<span class="newpill calledin">CALLED IN</span>') : "") +
         (r.real_phone ? '<span class="lang real">REAL</span>' : "") + "</div></td>" +
       '<td><span class="pill st-' + st + (st === "CALLING" ? " calling" : "") + '"><span class="d"></span>' + esc(LABEL[st]) + "</span></td>" +
       '<td><div class="prio" title="Priority score ' + esc(r.score) + '">' + prioBar(r.score || 0) + "</div></td>" +
@@ -912,6 +940,9 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
       }
       rows.push([r, i + 1]);
     });
+    // a caller on a live inbound call is pinned to the top until the call is answered, then drops into priority order
+    const liveIn = (r) => inboundIds.has(r.id) && (r.status === "IN_CALL" || r.status === "CALLING");
+    rows.sort((a, b) => (liveIn(b[0]) ? 1 : 0) - (liveIn(a[0]) ? 1 : 0));
     const body = $("rows");
     if (!rows.length) {
       body.innerHTML = '<tr class="table-empty"><td colspan="10">' + (all.length ? "No residents match this view." : "No residents in this zone.") + "</td></tr>";
@@ -933,6 +964,9 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
       if (tr._html !== html) { tr.innerHTML = html; tr._html = html; }
       tr.classList.toggle("welfare-row", r.status === "WELFARE_CHECK");
       tr.classList.toggle("inbound-row", inboundIds.has(r.id) && r.status !== "WELFARE_CHECK");
+      const arr = arrivals.get(r.id);
+      if (arr && Date.now() < arr.until) { if (!tr.classList.contains("arrive")) tr.classList.add("arrive"); }
+      else if (arr) { arrivals.delete(r.id); tr.classList.remove("arrive"); }
       const until = flashUntil.get(r.id);
       if (until && Date.now() < until) tr.classList.add("flash");
       else { tr.classList.remove("flash"); flashUntil.delete(r.id); }
@@ -1004,6 +1038,14 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     }
   }
   function onInbound(rid, st) {
+    const r0 = (st.residents || []).find((x) => x.id === rid);
+    // new = not on the roster before this update (the server adds the caller and logs the alert in one request)
+    const isNew = !!(knownIds && !knownIds.has(rid));
+    arrivals.set(rid, { kind: isNew ? "new" : "calledin", until: Date.now() + 8000 });
+    toast((isNew ? "New caller added to the board: " : "Calling in now: ") + "<b>" + esc(r0 ? r0.name : "a caller") + "</b> (incoming call)");
+    if (!reduceMotion) dropPin(r0);
+    const w = document.querySelector(".table-wrap");
+    if (w) w.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
     if (typeof openDrawer === "function") openDrawer(rid, null);
     drawerTab = "activity";
     document.querySelectorAll("[data-dtab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.dtab === "activity" ? "true" : "false"));
@@ -1014,9 +1056,38 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     }
     notice("Inbound call from " + (r ? r.name : "a caller") + ". Opening their profile.");
   }
+  function trackRoster(st) {
+    const ids = new Set((st.residents || []).map((r) => r.id));
+    const total = st.total || ids.size;
+    if (lastTotal !== null && total > lastTotal) bumpCount(total - lastTotal);
+    lastTotal = total;
+    if (!knownIds) knownIds = ids;
+    return () => { ids.forEach((i) => knownIds.add(i)); };
+  }
+  function bumpCount(n) {
+    const el = $("h-count");
+    const b = document.createElement("span");
+    b.className = "plus1"; b.textContent = "+" + n;
+    el.after(b);
+    setTimeout(() => b.remove(), 2600);
+  }
+  let toastTimer = null;
+  function toast(html) {
+    $("toast-text").innerHTML = html;
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $("toast").hidden = true; }, 6000);
+  }
+  function dropPin(r) {
+    if (!r || !mb || !mbReady || !xyOf(r)) return;
+    const m = new window.mapboxgl.Marker({ element: el('<div class="drop-pin" aria-hidden="true"></div>'), anchor: "center" }).setLngLat(xyOf(r)).addTo(mb);
+    setTimeout(() => m.remove(), 2300);
+  }
   function render(st) {
     last = st;
+    const commitRoster = trackRoster(st);
     detectInbound(st);
+    commitRoster();
     renderHeader(st);
     renderKpis(st);
     renderBanners(st);
@@ -1457,7 +1528,8 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
   }
   const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
   function vehiclePos(leg, t) {
-    const path = leg.path || [leg.a, leg.b];
+    const path = (leg.path || [leg.a, leg.b]).filter((c) => Array.isArray(c) && c.length === 2);
+    if (path.length < 2) return path[0] || (mapCfg && mapCfg.center) || [0, 0];
     const n = path.length - 1;
     // inbound callers start at the fire base once (no random phase), others loop with an offset
     let p = reduceMotion ? 1 : leg.inbound ? Math.min(1, ((t - (leg.t0 || t)) / 9000)) : ((t / (4500 * n)) + (leg.seed % 7) / 7) % 1;
@@ -1537,7 +1609,7 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
       const [x, y] = P(p.xy);
       if (p.calling && !reduceMotion) h += '<circle class="fb-pulse" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="13"/>';
       if (p.inbound) h += '<circle class="fb-inbound" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="16"/>';
-      h += '<circle class="fb-pin" data-id="' + p.id + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="11" fill="' + p.color + '"><title>' + esc(p.name + " · " + (LABEL[p.status] || p.status)) + "</title></circle>";
+      h += '<circle class="fb-pin' + (arrivals.has(p.id) && !reduceMotion ? " fb-drop" : "") + '" data-id="' + p.id + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="11" fill="' + p.color + '"><title>' + esc(p.name + " · " + (LABEL[p.status] || p.status)) + "</title></circle>";
       if (p.out) h += '<text x="' + x.toFixed(1) + '" y="' + (y + 5).toFixed(1) + '" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">✓</text>';
     });
     h += '<g id="fb-veh"></g></svg>';
@@ -1553,6 +1625,13 @@ tbody tr.inbound-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
       svgAnim = requestAnimationFrame(tick);
     }
   }
+  $("simIncoming").addEventListener("click", async (ev) => {
+    const b = ev.currentTarget;
+    if (!api.simIncoming || b.disabled) return;
+    b.disabled = true;
+    try { await api.simIncoming(); } catch (e) { notice("Could not simulate a call: " + e.message); }
+    finally { setTimeout(() => { b.disabled = false; }, 1500); poller.now(); }
+  });
   $("map3d").addEventListener("click", () => { if (mb && mbReady) set3d(!is3d, true); });
   $("map").addEventListener("click", (ev) => {
     const pin = ev.target.closest && ev.target.closest(".fb-pin");

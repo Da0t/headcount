@@ -188,6 +188,11 @@
         if (!res.ok) throw new ApiError(res.status, (data && data.detail) || res.statusText);
         return data;
       },
+      /**
+       * Free simulated inbound call (no Twilio): POST /api/sim/incoming, optional rid. Logs the same events as a
+       * real call to the Twilio number. @returns {Promise<{rid, name, lang, attempt, step, say}>}
+       */
+      simIncoming: (rid) => request("POST", "/api/sim/incoming" + (rid != null ? "?rid=" + q(rid) : "")),
       /** @returns {Promise<Ringing[]>} */
       simRinging: () => request("GET", "/api/sim/ringing"),
       /** Pick up. Rejects with status 409 if the call is no longer ringing. @returns {Promise<{say: string}>} */
@@ -467,6 +472,34 @@
       setAutopilot: async (on) => { await delay(); autopilot = !!on; return { autopilot }; },
       health: async () => ({ ok: true, gemini: true, twilio: false, model: "mock", autopilot, mock: true, demo_rid: null }),
       getMap: async () => copy(MAP),
+      // a new caller phones in and answers the 3 inbound questions by themselves (mock only)
+      simIncoming: async () => {
+        await delay();
+        if (startedAt === null) startedAt = now();
+        const id = Math.max(...residents.map((r) => r.id)) + 1;
+        const med = MAP.shelters.find((x) => x.medical_staff) || MAP.shelters[0];
+        const r = { id, name: "Caller " + id + " (simulated)", age: 0, address: "Location unknown: ask on the call", lang: "en",
+          lng: MAP.center[0], lat: MAP.center[1], contact_mode: "voice", script: [], status: "PENDING", attempts: 0, unclear: 0,
+          reading: null, family: "", channel: "", updated: now(),
+          assist: { transport: "ambulance", shelter: med.name, shelter_why: ["medical staff on site"], needs: ["medical help: ambulance crew"] } };
+        residents.push(r);
+        log(r, "New caller added from an incoming call.", "start");
+        r.attempts = 1; r.channel = "sim"; touch(r, "IN_CALL");
+        log(r, "Incoming call from " + r.name + " (attempt 1).", "alert");
+        const steps = [["are you safe or do you need help", "I fell and I can't get up."], ["anyone with you, pets", "My husband is here with me."], ["address or cross street", "4410 Quail Run Court"]];
+        let t = 1.5;
+        steps.forEach(([q2, a], i) => {
+          later(t, () => log(r, "Inbound step " + (i + 1) + ": " + q2, "info"));
+          later(t + 2.2, () => log(r, "Said (step " + (i + 1) + "): \u201c" + a + "\u201d", "speech"));
+          t += 3.6;
+        });
+        later(t + 0.5, () => {
+          respond(r, R("NEEDS_MEDICAL", steps.map((x) => x[1]).join(" "), "Fell, cannot get up. 1 other person with them. At 4410 Quail Run Court.",
+            { people_with_them: 1, mobility_help: true, where_they_are: "4410 Quail Run Court" }));
+          log(r, "Routing a responder (simulated dispatch, demo).", "alert");
+        });
+        return { rid: id, name: r.name, lang: "en", attempt: 1, step: 1, say: "" };
+      },
       getResident: async (rid) => {
         await delay();
         const r = byId(rid);
