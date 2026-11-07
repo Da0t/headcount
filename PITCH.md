@@ -44,7 +44,7 @@ Gemini understands messy speech in two languages, in about a second. Plain, test
 
 **1:40 · "I'll call it myself"**
 
-*Dial the Headcount number from your own phone, on speaker.*
+*On the phone simulator (`/phone`), press **Call Headcount**.*
 
 One more. I'll call it myself, as someone in danger.
 

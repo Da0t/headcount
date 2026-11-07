@@ -147,9 +147,14 @@ There is deliberately no VoiceOS tool for this single call: the confirmation sta
 
 ### Calling in: "I'll call it myself"
 
-Someone in danger can also call the Headcount number. Set the number's **"A call comes in"** webhook in the Twilio console to HTTP POST `<PUBLIC_BASE_URL>/twilio/incoming`.
+Someone in danger can also call Headcount. There are two ways in, and both run the same structured call and the same board flow:
 
-1. Headcount matches the caller ID to a resident. An unknown number is added to the board as "Caller ...1234", pinned at the zone center.
+- **Demo path, free, in the browser:** open `/phone` and press **Call Headcount**. The phone simulator places a simulated inbound call (`POST /api/sim/incoming`, then `/api/sim/inbound/{rid}` for each step). No Twilio account or number is needed.
+- **Real phone number, supported:** set a Twilio number's **"A call comes in"** webhook to HTTP POST `<PUBLIC_BASE_URL>/twilio/incoming`. Buying a number needs an upgraded (non-trial) Twilio account with a compliance profile, so our live demo uses the browser path.
+
+How the call goes:
+
+1. On a real call, Headcount matches the caller ID to a resident, and an unknown number is added to the board as "Caller ...1234", pinned at the zone center. In the browser, the call comes from the chosen resident, or the presenter resident (`HEADCOUNT_DEMO_RID`), or else a new "Caller N (simulated)" at the zone center.
 2. The call opens with "Headcount emergency line. This is a demo, if this is a real emergency hang up and call 911." and then asks three short questions, in English or Spanish:
    - "Are you safe right now, or do you need help?" (in their own words, or press 1 safe, 2 need a ride, 3 medical help)
    - "Is anyone with you, and do you have pets?"
@@ -250,7 +255,7 @@ Free-tier Gemini keys can return rate-limit errors (429) when many calls land at
 pytest -q
 ```
 
-111 tests, all passing with no API keys and without making any Gemini or Twilio calls. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, transport and shelter rules, text check-ins and the SMS reply route, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
+129 tests, all passing with no API keys and without making any Gemini or Twilio calls. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, transport and shelter rules, text check-ins and the SMS reply route, the inbound structured call (real and simulated), and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
 
 ## Project layout
 
