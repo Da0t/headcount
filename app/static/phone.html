@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Headcount · Phone simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050607;
+  --screen: #0e1013;
+  --card: #171a1f;
+  --card-2: #1f232a;
+  --line: #2a2f37;
+  --text: #f1f3f5;
+  --muted: #9aa3ae;
+  --faint: #6b7480;
+  --red: #ff453a;
+  --green: #30d158;
+  --blue: #4c9dff;
+  --violet: #b18cff;
+  --amber: #f2c94c;
+  --err-bg: rgba(255, 69, 58, .12);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px; line-height: 1.4; overflow-x: hidden;
+}
+.mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+button, textarea { font: inherit; color: inherit; }
+.phone {
+  max-width: 420px; margin: 0 auto; min-height: 100vh; background: var(--screen);
+  display: flex; flex-direction: column; border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.top { padding: 16px 16px 12px; border-bottom: 1px solid var(--line); }
+.top-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.title { font-weight: 700; font-size: 20px; }
+.title span { color: var(--muted); font-weight: 500; font-size: 15px; }
+.tag { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.mock { color: var(--amber); border-color: rgba(242, 201, 76, .45); }
+.hint { margin-top: 8px; font-size: 13.5px; color: var(--muted); }
+.hint a { color: var(--blue); }
+.err {
+  display: none; margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; background: var(--err-bg);
+  border: 1px solid rgba(255, 69, 58, .45); color: var(--red); font-size: 14px; overflow-wrap: anywhere;
+}
+.err.show { display: block; }
+main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; min-height: 0; }
+.empty { color: var(--faint); text-align: center; padding: 48px 12px; }
+.empty .big { font-size: 18px; color: var(--muted); margin-bottom: 6px; }
+
+/* incoming call cards */
+.call {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 18px 16px;
+  animation: slide .3s ease-out both;
+}
+@keyframes slide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.call .who { font-size: 24px; font-weight: 700; overflow-wrap: anywhere; }
+.call .sub { color: var(--muted); font-size: 14.5px; margin-top: 2px; }
+.call .lang { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; color: var(--faint); margin-top: 4px; }
+.call-actions { display: flex; justify-content: space-around; margin-top: 18px; }
+.round {
+  width: 64px; height: 64px; border-radius: 50%; border: 0; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 600; font-size: 13px;
+}
+.round:focus-visible, .btn:focus-visible, .key:focus-visible, textarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.round.decline { background: var(--red); }
+.round.answer { background: var(--green); animation: ring 1.2s ease-in-out infinite; }
+.round[disabled] { opacity: .5; cursor: default; animation: none; }
+.round-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+@keyframes ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, .5); } 50% { box-shadow: 0 0 0 10px rgba(48, 209, 88, 0); } }
+.round svg { width: 26px; height: 26px; fill: #fff; }
+.round.decline svg { transform: rotate(135deg); }
+
+/* in-call */
+.incall { display: none; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+.incall.show { display: flex; }
+.incall-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.incall-head .who { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.incall-head .sub { font-size: 13px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+.chat { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 40vh; min-height: 120px; padding: 2px; }
+.bubble { max-width: 88%; padding: 10px 13px; border-radius: 16px; font-size: 15px; overflow-wrap: anywhere; }
+.bubble.them { background: var(--card-2); border-bottom-left-radius: 4px; align-self: flex-start; }
+.bubble.me { background: var(--blue); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+.bubble .from { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+.bubble.me .from { color: rgba(255, 255, 255, .75); }
+.result {
+  background: rgba(48, 209, 88, .12); border: 1px solid rgba(48, 209, 88, .45); color: var(--green);
+  border-radius: 10px; padding: 10px 12px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13.5px; overflow-wrap: anywhere;
+}
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.key {
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; cursor: pointer; text-align: center;
+}
+.key b { display: block; font-size: 24px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+.key span { font-size: 12px; color: var(--muted); }
+.key:hover, .btn:hover { border-color: var(--muted); }
+textarea {
+  width: 100%; min-height: 74px; resize: vertical; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; font-size: 15px;
+}
+textarea::placeholder { color: var(--faint); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  flex: 1; min-width: 90px; border: 1px solid var(--line); background: var(--card-2); border-radius: 12px; padding: 12px 10px;
+  font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn.send { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.rec { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.hang { background: transparent; border-color: rgba(255, 69, 58, .6); color: var(--red); }
+.btn[disabled], .key[disabled] { opacity: .45; cursor: default; }
+.rec-dot { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+footer { padding: 12px 16px 18px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top">
+    <div class="top-row">
+      <div class="title">Headcount <span>phone simulator</span></div>
+      <span class="tag" id="mode">LIVE</span>
+    </div>
+    <div class="hint">Turn Autopilot off on the <a id="boardLink" href="/" target="_blank" rel="noopener">board</a> to play residents yourself.</div>
+  </div>
+  <div class="err" id="err" role="alert"></div>
+
+  <main>
+    <div id="lobby">
+      <div id="calls"><div class="empty"><div class="big">No incoming calls</div>Calls ring here when the board starts a campaign.</div></div>
+    </div>
+
+    <section class="incall" id="incall" aria-live="polite">
+      <div class="incall-head">
+        <div>
+          <div class="who" id="ic-name"></div>
+          <div class="sub" id="ic-sub"></div>
+        </div>
+      </div>
+      <div class="chat" id="chat"></div>
+      <div id="result"></div>
+      <div id="controls">
+        <div class="keys">
+          <button class="key" type="button" data-digit="1"><b>1</b><span>I'm out</span></button>
+          <button class="key" type="button" data-digit="2"><b>2</b><span>Ride</span></button>
+          <button class="key" type="button" data-digit="3"><b>3</b><span>Medical</span></button>
+        </div>
+        <div style="height:10px"></div>
+        <textarea id="text" placeholder="Answer in your own words, English or Spanish" aria-label="Answer in your own words, English or Spanish"></textarea>
+        <div style="height:8px"></div>
+        <div class="row">
+          <button class="btn" id="speak" type="button">Speak</button>
+          <button class="btn send" id="send" type="button">Send</button>
+        </div>
+        <div style="height:8px"></div>
+        <div class="row"><button class="btn hang" id="hang" type="button">Hang up</button></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const params = new URLSearchParams(location.search);
+  const MOCK = params.get("mock") === "1";
+  const POLL_MS = 1000;
+  const LANG_CODE = { en: "en-US", es: "es-MX" };
+
+  const $ = (id) => document.getElementById(id);
+  function esc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function showErr(msg) {
+    const el = $("err");
+    if (msg) { el.textContent = msg; el.classList.add("show"); } else { el.textContent = ""; el.classList.remove("show"); }
+  }
+  if (MOCK) {
+    $("mode").textContent = "MOCK"; $("mode").classList.add("mock");
+    $("boardLink").href = "/?mock=1";
+  }
+
+  // ------------------------------------------------------------------ speech
+  function speak(text, lang) {
+    if (!text || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = LANG_CODE[lang] || "en-US";
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* speech is a nice-to-have */ }
+  }
+  function stopSpeaking() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+
+  // ------------------------------------------------------------------ mock backend
+  const Mock = (function () {
+    const PROMPT = "Hello Dorothy, this is Headcount, the evacuation check for your neighborhood. There is an evacuation order for your area. Please tell me, in your own words, are you out, or do you need help? You can also press 1 if you are out, 2 if you need a ride, or 3 if you need medical help.";
+    const ASK_AGAIN = "Sorry, I didn't catch that. Are you out, or do you need help? Press 1 if you are out, 2 for a ride, 3 for medical help.";
+    const CONFIRM = {
+      OUT: "Thank you. I've marked you as safely out. We'll let your family know. Stay safe.",
+      NEEDS_RIDE: "Thank you. I've marked that you need a ride, and a responder will come to you. If anyone is in danger right now, hang up and call 911.",
+      NEEDS_MEDICAL: "Thank you. I've marked that you need medical help, and responders are being told right now. If anyone is in danger right now, hang up and call 911.",
+      STAYING: "I understand you are staying. I've let responders know. If you change your mind, please leave as soon as you can.",
+    };
+    const CALLBACK = "Thank you. A person from our team will call you back shortly. If you are in danger, call 911.";
+    let call = null, unclear = 0;
+    function fresh() { call = { id: 3, name: "Dorothy Chen", first: "Dorothy", lang: "en", status: "CALLING", attempt: 1, prompt: PROMPT }; unclear = 0; }
+    fresh();
+    function guess(text) {
+      const t = text.toLowerCase();
+      if (/^\s*1\s*$/.test(t)) return ["OUT", "keypad"];
+      if (/^\s*2\s*$/.test(t)) return ["NEEDS_RIDE", "keypad"];
+      if (/^\s*3\s*$/.test(t)) return ["NEEDS_MEDICAL", "keypad"];
+      if (/(fell|hurt|breath|ambulance|me ca[ií]|herid|no puedo respirar|ambulancia)/.test(t)) return ["NEEDS_MEDICAL", "mock"];
+      if (/(ride|car|drive|wheelchair|can't walk|carro|transporte|silla de ruedas)/.test(t)) return ["NEEDS_RIDE", "mock"];
+      if (/(not leaving|staying|me quedo|no me voy)/.test(t)) return ["STAYING", "mock"];
+      if (/(out|left|safe|shelter|salimos|ya sal|estamos bien|a salvo)/.test(t)) return ["OUT", "mock"];
+      return ["UNCLEAR", "mock"];
+    }
+    return {
+      ringing() { return call && call.status !== "DONE" ? [Object.assign({}, call)] : []; },
+      answer() { if (!call || call.status !== "CALLING") { const e = new Error("409 no longer ringing"); e.status = 409; throw e; } call.status = "IN_CALL"; return { say: call.prompt }; },
+      decline() { call.status = "DONE"; setTimeout(fresh, 6000); return { ok: true }; },
+      say(text) {
+        const [answer, engine] = guess(text);
+        const reading = { answer, quote: text, responder_note: "", engine: engine === "keypad" ? "keypad" : "Gemini (mock)" };
+        if (answer === "UNCLEAR") {
+          unclear += 1;
+          if (unclear < 2) return { say: ASK_AGAIN, keep_listening: true, reading };
+          call.status = "DONE"; setTimeout(fresh, 6000);
+          return { say: CALLBACK, keep_listening: false, reading };
+        }
+        call.status = "DONE"; setTimeout(fresh, 6000);
+        return { say: CONFIRM[answer], keep_listening: false, reading };
+      },
+    };
+  })();
+
+  // ------------------------------------------------------------------ API
+  async function api(method, path, body) {
+    const res = await fetch(path, { method, body, headers: { Accept: "application/json" }, cache: "no-store" });
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* empty */ }
+    if (!res.ok) {
+      let detail = data && data.detail;
+      if (detail && typeof detail !== "string") detail = JSON.stringify(detail);
+      const err = new Error(detail || (res.status + " " + res.statusText));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+  const API = {
+    ringing: () => MOCK ? Mock.ringing() : api("GET", "/api/sim/ringing"),
+    answer: (c) => MOCK ? Mock.answer() : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/answer?attempt=" + encodeURIComponent(c.attempt)),
+    decline: (c, reason) => MOCK ? Mock.decline() : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/decline?attempt=" + encodeURIComponent(c.attempt) + "&reason=" + encodeURIComponent(reason)),
+    say: (c, form, text) => MOCK ? Mock.say(text) : api("POST", "/api/sim/" + encodeURIComponent(c.id) + "/say?attempt=" + encodeURIComponent(c.attempt), form),
+  };
+
+  // ------------------------------------------------------------------ lobby
+  let active = null;        // the call we are in
+  let busy = false;
+  let pollTimer = null;
+  let lastCallsKey = "";
+
+  const PHONE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>';
+
+  function renderCalls(list) {
+    const ringing = (list || []).filter((c) => c.status === "CALLING");
+    const key = ringing.map((c) => c.id + ":" + c.attempt).join(",");
+    if (key === lastCallsKey) return;
+    lastCallsKey = key;
+    const box = $("calls");
+    if (!ringing.length) {
+      box.innerHTML = '<div class="empty"><div class="big">No incoming calls</div>Calls ring here when the board starts a campaign.</div>';
+      return;
+    }
+    box.innerHTML = ringing.map((c, i) =>
+      '<div class="call" data-i="' + i + '">' +
+        '<div class="who">' + esc(c.name) + "</div>" +
+        '<div class="sub">Incoming call · Headcount · attempt ' + esc(c.attempt) + "</div>" +
+        '<div class="lang">' + (c.lang === "es" ? "Spanish speaker" : "English speaker") + "</div>" +
+        '<div class="call-actions">' +
+          '<div class="round-wrap"><button class="round decline" type="button" data-act="decline" aria-label="Decline call from ' + esc(c.name) + '">' + PHONE_ICON + "</button>Decline</div>" +
+          '<div class="round-wrap"><button class="round answer" type="button" data-act="answer" aria-label="Answer call from ' + esc(c.name) + '">' + PHONE_ICON + "</button>Answer</div>" +
+        "</div>" +
+      "</div>").join("");
+    box._calls = ringing;
+  }
+
+  $("calls").addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("button[data-act]");
+    if (!btn || busy) return;
+    const card = btn.closest(".call");
+    const c = $("calls")._calls && $("calls")._calls[Number(card.dataset.i)];
+    if (!c) return;
+    busy = true;
+    card.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    showErr("");
+    try {
+      if (btn.dataset.act === "answer") {
+        const r = await API.answer(c);
+        enterCall(c, r && r.say);
+      } else {
+        await API.decline(c, "declined");
+      }
+    } catch (e) {
+      if (e.status === 409) showErr(c.name + " is no longer ringing.");
+      else showErr(e.message);
+    } finally {
+      busy = false;
+      lastCallsKey = "";
+      poll();
+    }
+  });
+
+  async function poll() {
+    clearTimeout(pollTimer);
+    if (!active) {
+      try {
+        const list = await API.ringing();
+        renderCalls(list);
+        if ($("err").dataset.conn) { showErr(""); delete $("err").dataset.conn; }
+      } catch (e) {
+        showErr("Cannot reach the Headcount server (" + e.message + "). To rehearse without a backend, open this page with ?mock=1.");
+        $("err").dataset.conn = "1";
+      }
+    }
+    pollTimer = setTimeout(poll, POLL_MS);
+  }
+
+  // ------------------------------------------------------------------ in call
+  let recorder = null, chunks = [], stream = null;
+
+  function bubble(text, who) {
+    const el = document.createElement("div");
+    el.className = "bubble " + (who === "me" ? "me" : "them");
+    el.innerHTML = '<span class="from">' + (who === "me" ? "You" : "Headcount") + "</span>" + esc(text);
+    $("chat").appendChild(el);
+    $("chat").scrollTop = $("chat").scrollHeight;
+  }
+  function setControls(enabled) {
+    $("controls").querySelectorAll("button, textarea").forEach((el) => {
+      if (el.id === "speak" && recorder) return;
+      el.disabled = !enabled;
+    });
+  }
+  function enterCall(c, prompt) {
+    active = c;
+    $("lobby").style.display = "none";
+    $("incall").classList.add("show");
+    $("ic-name").textContent = c.name;
+    $("ic-sub").textContent = "IN CALL · attempt " + c.attempt;
+    $("chat").innerHTML = "";
+    $("result").innerHTML = "";
+    $("controls").style.display = "";
+    $("text").value = "";
+    setControls(true);
+    const say = prompt || c.prompt || "";
+    if (say) { bubble(say, "them"); speak(say, c.lang); }
+    $("text").focus();
+  }
+  function leaveCall(delayMs) {
+    const done = () => {
+      stopRecording(true);
+      active = null;
+      $("incall").classList.remove("show");
+      $("lobby").style.display = "";
+      lastCallsKey = "";
+      poll();
+    };
+    if (delayMs) setTimeout(done, delayMs); else done();
+  }
+
+  async function submit(form, shownText, plainText) {
+    if (!active || busy) return;
+    busy = true;
+    setControls(false);
+    showErr("");
+    if (shownText) bubble(shownText, "me");
+    const c = active;
+    try {
+      const r = await API.say(c, form, plainText || "");
+      if (r && r.say) { bubble(r.say, "them"); speak(r.say, c.lang); }
+      if (r && r.keep_listening) {
+        setControls(true);
+        $("text").value = "";
+        $("text").focus();
+      } else {
+        const rd = (r && r.reading) || {};
+        const res = document.createElement("div");
+        res.className = "result";
+        res.textContent = "Heard as: " + (rd.answer || "?") + " · " + (rd.engine || "unknown");
+        $("result").innerHTML = "";
+        $("result").appendChild(res);
+        $("controls").style.display = "none";
+        $("ic-sub").textContent = "CALL ENDED";
+        leaveCall(4000);
+      }
+    } catch (e) {
+      showErr(e.message);
+      if (e.status === 409 || e.status === 404) { leaveCall(1500); }
+      else setControls(true);
+    } finally {
+      busy = false;
+    }
+  }
+
+  function sendText(text) {
+    text = (text || "").trim();
+    if (!text) { $("text").focus(); return; }
+    const fd = new FormData();
+    fd.append("text", text);
+    submit(fd, text, text);
+  }
+  $("send").addEventListener("click", () => sendText($("text").value));
+  $("text").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendText($("text").value); }
+  });
+  $("controls").querySelectorAll(".key").forEach((k) => {
+    k.addEventListener("click", () => sendText(k.dataset.digit));
+  });
+  $("hang").addEventListener("click", async () => {
+    if (!active || busy) return;
+    const c = active;
+    busy = true;
+    stopSpeaking();
+    try { await API.decline(c, "hung up"); } catch (e) { showErr(e.message); }
+    finally { busy = false; leaveCall(0); }
+  });
+
+  // voice: record with MediaRecorder and upload as form field "audio"
+  function pickMime() {
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
+    for (const m of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]) {
+      if (MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return "";
+  }
+  function stopRecording(discard) {
+    if (recorder) {
+      recorder._discard = !!discard;
+      try { if (recorder.state !== "inactive") recorder.stop(); } catch (e) { /* ignore */ }
+    }
+    if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+  }
+  function speakBtnIdle() {
+    const b = $("speak");
+    b.classList.remove("rec");
+    b.textContent = "Speak";
+  }
+  $("speak").addEventListener("click", async () => {
+    if (!active) return;
+    if (recorder) { stopRecording(false); return; }
+    if (MOCK) { showErr("Voice needs the live server and a Gemini key. In mock mode, type an answer instead."); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) { showErr("This browser cannot record audio. Type an answer instead."); return; }
+    showErr("");
+    stopSpeaking();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      showErr("Microphone blocked (" + e.message + "). Allow the mic, or type an answer instead.");
+      return;
+    }
+    const mime = pickMime();
+    chunks = [];
+    try { recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+    catch (e) { showErr("Could not start recording: " + e.message); stopRecording(true); recorder = null; return; }
+    recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    recorder.onstop = () => {
+      const rec = recorder;
+      recorder = null;
+      speakBtnIdle();
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      if (rec._discard || !active) return;
+      const type = (rec.mimeType || mime || "audio/webm").split(";")[0];
+      const blob = new Blob(chunks, { type });
+      if (!blob.size) { showErr("Nothing was recorded. Try again."); return; }
+      const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+      const fd = new FormData();
+      fd.append("audio", blob, "answer." + ext);
+      submit(fd, "(voice message)", "");
+    };
+    recorder.start();
+    const b = $("speak");
+    b.classList.add("rec");
+    b.innerHTML = '<span class="rec-dot"></span>Stop and send';
+    setControls(true);
+  });
+
+  poll();
+})();
+</script>
+</body>
+</html>
