@@ -165,8 +165,8 @@ Everything lives in `.env` (see [`.env.example`](.env.example) for every variabl
 
 | Variable | Default | What it does |
 |---|---|---|
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | none, `gemini-3.8-flash` | Speech understanding. Without a key, keywords and keypad only. |
-| `HEADCOUNT_GEMINI_TIMEOUT` | 6 | Seconds before falling back to keywords |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | none, `gemini-3.5-flash-lite` | Speech understanding (about 1 second per call). Without a key, keywords and keypad only. |
+| `HEADCOUNT_GEMINI_TIMEOUT` | 8 | Seconds before falling back to keywords. Twilio waits about 15 seconds for a reply, so keep this well under that. |
 | `HEADCOUNT_STAGGER` | 2 | Seconds between first dials |
 | `HEADCOUNT_RING_TIMEOUT` | 20 | Seconds a call rings before it counts as missed |
 | `HEADCOUNT_RETRY_GAP` | 15 | Seconds before calling a missed resident again |
@@ -175,13 +175,15 @@ Everything lives in `.env` (see [`.env.example`](.env.example) for every variabl
 
 For a faster stage demo, try `HEADCOUNT_STAGGER=1 HEADCOUNT_RING_TIMEOUT=8 HEADCOUNT_RETRY_GAP=4`.
 
+Free-tier Gemini keys can return rate-limit errors (429) when many calls land at once. The call doesn't fail: that answer falls back to keywords, and the board shows `keywords` with the reason.
+
 ## Tests
 
 ```bash
 pytest -q
 ```
 
-50 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
+61 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
 
 ## Project layout
 
