@@ -420,6 +420,14 @@ body.fs .map-card { height: calc(100vh - 236px); }
 .mk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mk.base { background: var(--red); border-color: var(--red); color: #fff; }
 .mk-label { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--text-2); background: rgba(255, 255, 255, .85); padding: 0 4px; border-radius: 4px; }
+.map-btn { position: absolute; right: 48px; top: 8px; z-index: 3; height: 29px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-2);
+  background: #fff; font-weight: 600; font-size: 12px; color: var(--text-2); cursor: pointer; box-shadow: var(--shadow); }
+.map-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.map.is3d .mk { background: none; border: 0; box-shadow: none; width: 0; height: 0; }
+.map.is3d .mk svg { display: none; }
+.map.is3d .mk-label { top: auto; bottom: 46px; font-size: 11px; background: #fff; border: 1px solid var(--line-2); padding: 1px 6px; box-shadow: var(--shadow); }
+.map.is3d .mk.base .mk-label { color: #fff; background: #2b2d33; border-color: #2b2d33; }
+.map.is3d .mk.med .mk-label { color: #fff; background: var(--red); border-color: var(--red); }
 .zone-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b8480f; background: rgba(255, 255, 255, .8); padding: 1px 6px; border-radius: 4px; }
 .view-switch { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; height: 32px; }
 .view-switch button { border: 0; background: #fff; padding: 0 10px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; }
@@ -549,6 +557,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       </div>
       <section class="map-card" aria-label="Zone map">
         <div class="map-title">Zone map</div>
+        <button class="map-btn" id="map3d" type="button" aria-pressed="true" hidden title="Switch between a 3D and a flat map">3D</button>
         <div class="map" id="map"><div class="map-empty">Loading map…</div></div>
       </section>
     </div>
@@ -794,6 +803,8 @@ body.fs .map-card { height: calc(100vh - 236px); }
   // short names for the column; the full name is in the tooltip and the row detail
   const SHELTER_SHORT = [[/high school/i, "Alpine HS gym"], [/medical/i, "Viejas Medical"], [/community/i, "Community Ctr"], [/fairground/i, "Fairgrounds"]];
   const shelterName = (s) => {
+    const cfg = typeof mapCfg !== "undefined" && mapCfg && (mapCfg.shelters || []).find((x) => x.name === s);
+    if (cfg && cfg.short) return cfg.short;
     const full = String(s || "").replace(/\s*\(demo\)\s*$/i, "");
     for (const [re, short] of SHELTER_SHORT) if (re.test(full)) return short;
     return full;
@@ -1335,13 +1346,25 @@ body.fs .map-card { height: calc(100vh - 236px); }
       const top = ring.reduce((a, b) => (b[1] > a[1] ? b : a), ring[0] || mapCfg.center);
       new window.mapboxgl.Marker({ element: el('<div class="zone-label">Evacuation zone</div>'), anchor: "bottom" }).setLngLat(top).addTo(mb);
       (mapCfg.shelters || []).forEach((s) => {
-        new window.mapboxgl.Marker({ element: el('<div class="mk" title="' + esc(s.name) + '"><svg aria-hidden="true"><use href="#a-home"/></svg><span class="mk-label">' + esc(s.short || shelterName(s.name)) + "</span></div>") })
+        new window.mapboxgl.Marker({ element: el('<div class="mk' + (isMedical(s) ? " med" : "") + '" title="' + esc(s.name) + '"><svg aria-hidden="true"><use href="#a-home"/></svg><span class="mk-label">' + esc(s.short || shelterName(s.name)) + "</span></div>") })
           .setLngLat([s.lng, s.lat]).addTo(mb);
       });
       if (mapCfg.base) {
         new window.mapboxgl.Marker({ element: el('<div class="mk base" title="' + esc(mapCfg.base.name) + '"><svg aria-hidden="true"><use href="#i-station"/></svg><span class="mk-label">Fire base</span></div>') })
           .setLngLat([mapCfg.base.lng, mapCfg.base.lat]).addTo(mb);
       }
+      // 3D: city buildings plus extruded footprints for shelters, the hospital (medical shelter) and the fire base
+      const labelLayer = (mb.getStyle().layers || []).find((l) => l.type === "symbol" && l.layout && l.layout["text-field"]);
+      if (mb.getSource("composite")) {
+        mb.addLayer({ id: "buildings-3d", source: "composite", "source-layer": "building", filter: ["==", ["get", "extrude"], "true"],
+          type: "fill-extrusion", minzoom: 14, paint: { "fill-extrusion-color": "#d4d4d8", "fill-extrusion-height": ["get", "height"],
+            "fill-extrusion-base": ["get", "min_height"], "fill-extrusion-opacity": 0.6 } }, labelLayer && labelLayer.id);
+      }
+      mb.addSource("facilities", { type: "geojson", data: { type: "FeatureCollection", features: facilities() } });
+      mb.addLayer({ id: "facilities-3d", type: "fill-extrusion", source: "facilities", paint: { "fill-extrusion-color": ["get", "color"],
+        "fill-extrusion-height": ["get", "height"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.92 } });
+      $("map3d").hidden = false;
+      set3d(true, false);
       mb.on("click", "pins", (e) => { const f = e.features && e.features[0]; if (f) openDrawer(Number(f.properties.id)); });
       mb.on("mouseenter", "pins", () => { mb.getCanvas().style.cursor = "pointer"; });
       mb.on("mouseleave", "pins", () => { mb.getCanvas().style.cursor = ""; });
@@ -1350,11 +1373,32 @@ body.fs .map-card { height: calc(100vh - 236px); }
       if (!reduceMotion) requestAnimationFrame(animateMap);
     });
   }
+  const isMedical = (s) => !!(s.medical_staff || /medical|hospital/i.test(s.name || "") || /medical|hospital/i.test(s.short || ""));
+  // ~40 m square footprints, extruded by type
+  function square(lng, lat, m) {
+    const dy = m / 2 / 111320, dx = m / 2 / (111320 * Math.cos(lat * Math.PI / 180));
+    return { type: "Polygon", coordinates: [[[lng - dx, lat - dy], [lng + dx, lat - dy], [lng + dx, lat + dy], [lng - dx, lat + dy], [lng - dx, lat - dy]]] };
+  }
+  function facilities() {
+    const f = (mapCfg.shelters || []).map((s) => ({ type: "Feature", properties: { color: isMedical(s) ? cssVar("--red") : "#f26b1d", height: isMedical(s) ? 90 : 60 }, geometry: square(s.lng, s.lat, 40) }));
+    if (mapCfg.base) f.push({ type: "Feature", properties: { color: "#2b2d33", height: 75 }, geometry: square(mapCfg.base.lng, mapCfg.base.lat, 40) });
+    return f;
+  }
+  let is3d = true;
+  function set3d(on, animate) {
+    is3d = on;
+    $("map3d").setAttribute("aria-pressed", on ? "true" : "false");
+    $("map3d").textContent = on ? "3D" : "2D";
+    $("map").classList.toggle("is3d", on);
+    ["buildings-3d", "facilities-3d"].forEach((id) => { if (mb.getLayer(id)) mb.setLayoutProperty(id, "visibility", on ? "visible" : "none"); });
+    fitZone(animate);
+  }
   function fitZone(animate) {
     const ring = (mapCfg.zone && mapCfg.zone.coordinates && mapCfg.zone.coordinates[0]) || [];
     if (!mb || !ring.length) return;
     const xs = ring.map((c) => c[0]), ys = ring.map((c) => c[1]);
-    mb.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 36, duration: animate ? 400 : 0 });
+    mb.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+      { padding: 36, duration: animate ? 600 : 0, pitch: is3d ? 55 : 0, bearing: is3d ? -20 : 0 });
   }
   const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
   function vehiclePos(leg, t) { return lerp(leg.a, leg.b, reduceMotion ? 1 : ((t / 6000) + (leg.seed % 7) / 7) % 1); }
@@ -1433,6 +1477,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       svgAnim = requestAnimationFrame(tick);
     }
   }
+  $("map3d").addEventListener("click", () => { if (mb && mbReady) set3d(!is3d, true); });
   $("map").addEventListener("click", (ev) => {
     const pin = ev.target.closest && ev.target.closest(".fb-pin");
     if (pin) openDrawer(Number(pin.dataset.id), pin);
