@@ -26,13 +26,17 @@ She said it in her own words. The row flips to **needs a ride**, with "uses oxyg
 
 Her daughter Ana just got a text: her mom answered, needs a ride, and a responder has been told.
 
+*Point at George's row.*
+
+George is hard of hearing, so he never gets a call. He gets a text and replies 1.
+
 *Point at Walter's row.*
 
 Walter never answers. Headcount doesn't guess. After three calls, the board says **send a person**, with his address.
 
 *Ask VoiceOS out loud: "Who still needs help?" Let it answer.*
 
-A responder in a truck can ask that without touching a screen.
+A responder in a truck can ask that without touching a screen, and "who needs a wheelchair van?" tells the driver where to take each person.
 
 **1:35 · The rule**
 
@@ -40,13 +44,13 @@ Gemini understands messy speech in two languages, in about a second. Plain, test
 
 **1:50 · Close**
 
-*Point at the green banner. The board ends at 4 out and safe, 3 need a ride, 1 needs medical help, 1 is staying, and 1 welfare check.*
+*Point at the green banner. With 20 residents, the board ends at 7 out and safe, 6 need a ride, 2 need medical help, 2 are staying, 2 welfare checks, and 1 callback.*
 
 "Every resident is accounted for or has a responder on the way." That's Headcount.
 
 ## Fallback demo (30 seconds), if the server or wifi fails
 
-Open `/?mock=1` ahead of time in a second tab. Mock mode runs the whole campaign in the browser with the same 10 fictional residents, with no server, no Twilio and no Gemini. The board shows a **MOCK DATA** tag, so say so out loud.
+Open `/?mock=1` ahead of time in a second tab. Mock mode runs the whole campaign in the browser with fictional residents, with no server, no Twilio and no Gemini. The board shows a **MOCK DATA** tag, so say so out loud.
 
 1. **0:00** *Switch to the mock tab and press Start.* "Same campaign, running in the browser. The wifi's down, but the logic isn't."
 2. **0:10** *Point at Maria's row turning **needs a ride**.* "Maria answered in Spanish: no car, on oxygen. She's flagged for a ride, and her daughter is told."
