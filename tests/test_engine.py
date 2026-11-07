@@ -138,7 +138,8 @@ def test_full_seed_campaign_finishes():
         finally:
             engine_mod.random.uniform = orig
         snap = e.snapshot()
-        assert snap["counts"] == {"NEEDS_RIDE": 3, "WELFARE_CHECK": 1, "OUT": 4, "STAYING": 1, "NEEDS_MEDICAL": 1}
+        assert snap["counts"] == {"NEEDS_RIDE": 6, "WELFARE_CHECK": 2, "OUT": 7, "STAYING": 2, "NEEDS_MEDICAL": 2,
+                                  "NEEDS_CALLBACK": 1}
         scores = [row["score"] for row in snap["residents"]]
         assert scores == sorted(scores, reverse=True)
         assert snap["residents"][-1]["status"] == "OUT"
@@ -198,7 +199,7 @@ def test_snapshot_shape():
     for key in ["id", "name", "first", "age", "address", "lang", "status", "attempts", "channel", "score", "why",
                 "reading", "family", "updated", "real_phone"]:
         assert key in row
-    assert snap["done"] is False and snap["total"] == 10
+    assert snap["done"] is False and snap["total"] == 20
 
 
 def test_late_callback_from_previous_campaign_is_stale():

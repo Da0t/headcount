@@ -140,7 +140,7 @@ def test_signature_validation(monkeypatch, client):
 def test_api_state_and_sim_flow(monkeypatch, client):
     _, eng, _ = make(monkeypatch)
     st = client.get("/api/state").json()
-    assert st["zone"] and st["total"] == 10 and st["twilio"] is True
+    assert st["zone"] and st["total"] == 20 and st["twilio"] is True
     assert client.post("/api/autopilot?on=false").json() == {"autopilot": False}
     assert eng.autopilot is False
 

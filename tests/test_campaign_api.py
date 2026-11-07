@@ -14,7 +14,7 @@ from app.engine import Engine
 from app.models import Status
 from app.seed import load_residents
 
-EXPECTED = {"NEEDS_RIDE": 3, "WELFARE_CHECK": 1, "OUT": 4, "STAYING": 1, "NEEDS_MEDICAL": 1}
+EXPECTED = {"NEEDS_RIDE": 6, "WELFARE_CHECK": 2, "OUT": 7, "STAYING": 2, "NEEDS_MEDICAL": 2, "NEEDS_CALLBACK": 1}
 
 
 async def fake_classify_text(text, model="", timeout=0.0, api_key=None):
@@ -54,7 +54,7 @@ def test_full_campaign_over_http(api):
     assert c.post("/api/start").json() == {"ok": True}
     st = poll_done(c)
     assert st["counts"] == EXPECTED
-    assert st["unaccounted"] == 0 and st["total"] == 10 and st["zone"]
+    assert st["unaccounted"] == 0 and st["total"] == 20 and st["zone"]
     scores = [row["score"] for row in st["residents"]]
     assert scores == sorted(scores, reverse=True)
     walter = next(r for r in st["residents"] if r["id"] == 2)

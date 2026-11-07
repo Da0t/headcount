@@ -1,4 +1,4 @@
-"""Demo zone: 10 fictional residents whose scripts exercise every path through the engine."""
+"""Demo zone: 20 fictional residents whose scripts exercise every path through the engine."""
 from __future__ import annotations
 
 import copy
@@ -42,6 +42,36 @@ SEED: list[Resident] = [
     Resident(10, "Edna Morales", 93, "48 Viejas View Pl", oxygen=True, bedridden=True, lives_alone=True,
              contact_name="Ruth", contact_relation="neighbor",
              sim_script=["no_answer", ["My caregiver didn't come today. I can't get out of bed by myself."]]),
+    Resident(11, "Nicolette Vale", 69, "1842 Alpine Blvd",
+             contact_name="Mira", contact_relation="niece",
+             sim_script=["no_answer", ["We're out at my niece's place in El Cajon. My husband and I brought our cats."]]),
+    Resident(12, "Solana Reyes", 78, "2361 Tavern Rd", lang="es", oxygen=True, mobility=True, lives_alone=True,
+             contact_name="Dalia", contact_relation="daughter",
+             sim_script=["no_answer", ["No tengo carro y uso oxígeno y andadera. Tengo un perro. Necesito que me ayuden a salir."]]),
+    Resident(13, "Mateo Lumbre", 91, "821 Alpine Blvd", lang="es", oxygen=True, mobility=True,
+             contact_name="Rafa", contact_relation="grandson",
+             sim_script=[["Me caí y necesito una ambulancia. También hago diálisis."]]),
+    Resident(14, "Juniper Finch", 74, "1297 Arnold Way", hearing=True,
+             contact_name="Cedar", contact_relation="spouse",
+             sim_script=[["I'm staying here. My CPAP is here and the chickens need feeding."]]),
+    Resident(15, "Tomasina Del Sol", 96, "2760 South Grade Rd", lang="es", oxygen=True, bedridden=True,
+             lives_alone=True,
+             sim_script=["no_answer", "no_answer", "no_answer"]),
+    Resident(16, "Peregrine Moss", 66, "44 Harbison Canyon Rd",
+             contact_name="Wren", contact_relation="granddaughter",
+             sim_script=[["We're safe at the shelter with my granddaughter."]]),
+    Resident(17, "Amalia Cielo", 83, "1905 Victoria Dr", lang="es", mobility=True,
+             contact_name="Belen", contact_relation="daughter",
+             sim_script=["no_answer", ["No puedo caminar y uso silla de ruedas. Tengo dos gatos."]]),
+    Resident(18, "Orion Bellweather", 88, "903 Marshall Rd", mobility=True, hearing=True, contact_mode="text",
+             contact_name="Pip", contact_relation="grandchild",
+             sim_script=[["2"]]),
+    Resident(19, "Maribel Quill", 71, "52 Viejas View Pl", lang="en",
+             contact_name="Sol", contact_relation="sister",
+             sim_script=[["Maybe later.", "I'm not sure."]]),
+    Resident(20, "Tavio Bramble", 82, "1337 Japatul Valley Rd", lang="es", lives_alone=False,
+             contact_name="Lio", contact_relation="son",
+             sim_script=[["Ya salimos y estamos a salvo en casa de mi hijo en El Cajon. El caballo está con nosotros."]]),
 ]
 
 
