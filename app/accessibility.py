@@ -34,6 +34,9 @@ class Shelter:
     medical_staff: bool = False
     pets_allowed: bool = False
     large_animals: bool = False
+    lat: float = 0.0  # fictional map position in the demo zone
+    lng: float = 0.0
+    short: str = ""
     fictional: bool = True
 
     def caps(self) -> set[str]:
@@ -42,13 +45,14 @@ class Shelter:
 
 SHELTERS: list[Shelter] = [
     Shelter("Alpine High School gym (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, oxygen_power=True),
+            wheelchair_accessible=True, oxygen_power=True, lat=32.8402, lng=-116.7735, short="High School"),
     Shelter("Alpine Community Center (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, pets_allowed=True),
+            wheelchair_accessible=True, pets_allowed=True, lat=32.8322, lng=-116.7588, short="Community Ctr"),
     Shelter("Viejas Valley Medical Shelter (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, oxygen_power=True, medical_staff=True),
+            wheelchair_accessible=True, oxygen_power=True, medical_staff=True, lat=32.8415, lng=-116.7395,
+            short="Medical"),
     Shelter("Harbison Canyon Fairgrounds (demo)", "fictional, Alpine demo zone",
-            pets_allowed=True, large_animals=True),
+            pets_allowed=True, large_animals=True, lat=32.8165, lng=-116.7690, short="Fairgrounds"),
 ]
 
 LARGE_ANIMALS = re.compile(r"\b(horse|horses|pony|ponies|cow|cows|cattle|goat|goats|sheep|pig|pigs|llama|llamas|"
@@ -144,7 +148,9 @@ def assist(r: Resident) -> dict:
     if r.status == Status.OUT or answer == Answer.OUT:
         where = reading.where_they_are if reading else ""
         return {"transport": None, "shelter": None,
-                "shelter_why": [f"already out: {where}" if where else "already out"], "needs": needs}
+                "shelter_why": [f"already out: {where}" if where else "already out"], "needs": needs,
+                "shelter_lat": None, "shelter_lng": None}
 
     shelter, why = pick_shelter(required)
-    return {"transport": transport, "shelter": shelter.name if shelter else None, "shelter_why": why, "needs": needs}
+    return {"transport": transport, "shelter": shelter.name if shelter else None, "shelter_why": why, "needs": needs,
+            "shelter_lat": shelter.lat if shelter else None, "shelter_lng": shelter.lng if shelter else None}
