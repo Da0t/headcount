@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Headcount · Dispatch board</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,13 +55,14 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ------------------------------------------------------------------ app shell */
-.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.app { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100vh; }
 .side {
   background: var(--side); border-right: 1px solid var(--line); position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column; min-height: 0;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 18px 20px 12px; }
 .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.brand .logo { width: 28px; height: 28px; display: block; }
 .brand b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
 .sec { padding: 2px 12px 6px; }
 .sec-label { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 4px; }
@@ -78,13 +80,14 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 6px; vertical-align: 1px; }
 .feed { flex: 1; min-height: 120px; overflow-y: auto; }
 .ev {
-  display: grid; grid-template-columns: 7px auto minmax(0, 1fr); gap: 7px; align-items: center;
-  padding: 4px 6px; border-bottom: 1px solid var(--line); font-size: 12px;
+  display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 1px 8px; align-items: center;
+  padding: 6px 6px; border-bottom: 1px solid var(--line); font-size: 12px;
 }
+.ev .n { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev:last-child { border-bottom: 0; }
 .ev .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
 .ev .t { color: var(--muted); font-size: 11px; }
-.ev .m { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev .m { grid-column: 2 / -1; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev .m b { color: var(--text); font-weight: 600; }
 .ev.k-alert .dot, .ev.k-error .dot { background: var(--red); }
 .ev.k-alert .m { color: var(--red); }
@@ -97,7 +100,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .feed .empty { color: var(--muted); font-size: 12px; padding: 8px 6px; }
 
 /* ------------------------------------------------------------------ main */
-main { min-width: 0; padding: 16px 24px 16px; }
+main { min-width: 0; padding: 16px 24px; }
 .head { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
 .head h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.015em; }
 .head .count { font-size: 14px; color: var(--muted); font-weight: 500; }
@@ -118,7 +121,7 @@ main { min-width: 0; padding: 16px 24px 16px; }
 .cta svg.i { stroke-width: 2.2; width: 15px; height: 15px; }
 
 /* KPI strip */
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; margin-top: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
 .kpi { padding: 10px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 2px 12px; min-width: 0; }
 .kpi + .kpi { border-left: 1px solid var(--line); }
 .kpi .label { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -135,7 +138,7 @@ main { min-width: 0; padding: 16px 24px 16px; }
 .kpi.zero-good .num { color: var(--green); }
 
 /* banners: slim, one line each, side by side when both show */
-.banners { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 8px; margin-top: 10px; }
+.banners { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
 .banners:not(:has(.show)) { display: none; }
 .banner { display: none; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 9px; font-weight: 500; min-width: 0; }
 .banner.show { display: flex; animation: fadein .6s ease-out both; }
@@ -146,11 +149,14 @@ main { min-width: 0; padding: 16px 24px 16px; }
 .banner.done { background: var(--green-soft); color: #13703b; border: 1px solid #bfe6cf; }
 .banner.offline { background: var(--red-soft); color: #a51f22; border: 1px solid #f6c9ca; grid-column: 1 / -1; }
 .banner.offline .txt { white-space: normal; }
+.banner.ready .txt { white-space: normal; }
+.banner.ready { background: var(--side); color: var(--text-2); border: 1px dashed var(--line-2); grid-column: 1 / -1; }
+.banner.ready b { color: var(--text); }
 .banner.notice { background: var(--amber-soft); color: #7a5300; border: 1px solid #f1dfae; grid-column: 1 / -1; }
 @keyframes fadein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* tabs + toolbar in one row */
-.bar-row { display: flex; align-items: flex-end; gap: 8px 16px; border-bottom: 1px solid var(--line); margin-top: 10px; flex-wrap: wrap; }
+.bar-row { display: flex; align-items: flex-end; gap: 8px 16px; border-bottom: 1px solid var(--line); margin-top: 8px; flex-wrap: wrap; }
 .tabs { display: flex; gap: 22px; overflow-x: auto; scrollbar-width: none; }
 .tab {
   background: none; border: 0; padding: 8px 0 10px; color: var(--muted); font-weight: 500; cursor: pointer; white-space: nowrap;
@@ -180,19 +186,19 @@ main { min-width: 0; padding: 16px 24px 16px; }
 [aria-pressed="true"] .switch::after { transform: translateX(12px); }
 
 /* table: fixed layout, single-line rows */
-.table-wrap { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; overflow-x: hidden; max-height: calc(100vh - 262px); min-height: 260px; }
+.table-wrap { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; overflow-x: hidden; max-height: calc(100vh - 262px); min-height: 260px; }
 thead th { position: sticky; top: 0; z-index: 1; }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-col.c-rank { width: 44px; }
-col.c-res { width: 214px; }
-col.c-status { width: 152px; }
-col.c-prio { width: 100px; }
-col.c-why { width: 160px; }
-col.c-calls { width: 58px; }
-col.c-family { width: 100px; }
-col.c-engine { width: 82px; }
-col.c-assist { width: 176px; }
-col.c-updated { width: 70px; }
+th.c-rank { width: 44px; }
+th.c-res { width: 196px; }
+th.c-status { width: 152px; }
+th.c-prio { width: 94px; }
+th.c-why { width: 160px; }
+th.c-calls { width: 58px; }
+th.c-family { width: 100px; }
+th.c-engine { width: 82px; }
+th.c-assist { width: 244px; }
+th.c-updated { width: 70px; }
 thead th {
   text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
   padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #fcfcfd;
@@ -203,22 +209,29 @@ tbody td {
 }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr.r { cursor: pointer; transition: background .2s; }
-tbody tr.r:hover { background: #fafafb; }
+tbody tr.r:hover { background: #f8f8fa; }
+tbody tr.r:hover td:first-child { color: var(--accent); }
+tbody tr.r[aria-expanded="true"] { background: #fbfbfc; }
 tbody tr.r:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 tbody tr.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { 0%, 35% { background: var(--accent-soft); } 100% { background: transparent; } }
 tbody tr.welfare-row td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 td.c-rank { color: var(--muted); font-weight: 500; }
-.res-name { font-weight: 600; color: var(--text); }
+.resline { display: flex; align-items: baseline; min-width: 0; }
+.resline > * { flex: none; }
+.res-name { font-weight: 600; color: var(--text); flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .res-meta { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
 .lang { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--muted); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
 .lang.real { color: var(--blue); border-color: #c9dafb; }
 .lang.text { color: var(--violet); border-color: #d9cdf5; }
 .assist { color: var(--text-2); font-size: 12.5px; }
-.assist .ic { margin-right: 5px; color: var(--accent); }
+.assist { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.assist .ai { width: 16px; height: 16px; flex: none; color: var(--accent); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.assist .at { overflow: hidden; text-overflow: ellipsis; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-  padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; color: var(--gray); max-width: 100%;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap; color: var(--gray); max-width: 100%;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent); background: color-mix(in srgb, currentColor 7%, #fff);
 }
 .pill .d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
 .pill.calling .d { animation: pulse 1s ease-in-out infinite; }
@@ -235,7 +248,7 @@ td.c-rank { color: var(--muted); font-weight: 500; }
 .bar i { width: 8px; height: 8px; border-radius: 2px; background: var(--line-2); }
 .bar i.on { background: var(--accent); }
 .prio .n { font-weight: 600; }
-.chip { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: var(--side); border: 1px solid var(--line); color: var(--text-2); white-space: nowrap; margin-right: 3px; }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--side); border: 1px solid var(--line); color: var(--text-2); white-space: nowrap; margin-right: 3px; }
 .note-alert { color: var(--red); font-weight: 600; }
 .calls { font-weight: 600; }
 .fam { color: var(--text-2); font-size: 12.5px; }
@@ -253,13 +266,12 @@ tr.detail td { height: auto; white-space: normal; background: #fbfbfc; padding: 
 .detail dd { margin: 0; overflow-wrap: anywhere; }
 .detail .quote { font-style: italic; color: var(--text-2); }
 
-footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
+footer { margin-top: 8px; color: var(--muted); font-size: 12px; }
 body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: grayscale(.7); }
 
 /* ------------------------------------------------------------------ responsive */
 @media (max-width: 1519px) { .col-updated, .col-why { display: none; } }
 @media (max-width: 1279px) { .col-family { display: none; } }
-@media (max-width: 1100px) { .col-engine { display: none; } }
 @media (max-width: 980px) {
   .app { display: flex; flex-direction: column; }
   .side { display: contents; }
@@ -278,9 +290,9 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   /* phone table: rank | name | status | priority */
   .col-note, .col-calls, .col-family, .col-assist { display: none; }
   .table-wrap { max-height: none; overflow: visible; }
-  col.c-res { width: auto; }
-  col.c-status { width: 110px; }
-  col.c-prio { width: 52px; }
+  th.c-res { width: auto; }
+  th.c-status { width: 110px; }
+  th.c-prio { width: 52px; }
   .prio .bar { display: none; }
   .res-meta { display: none; }
   tr.detail td { padding-left: 14px; }
@@ -294,7 +306,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   .spark { width: 56px; height: 24px; }
   .search { width: 100%; }
   .tabs { gap: 16px; }
-  col.c-rank { width: 26px; }
+  th.c-rank { width: 26px; }
   tbody td, thead th { padding: 0 6px; }
   thead th { padding: 8px 6px; }
 }
@@ -314,13 +326,18 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="a-van" viewBox="0 0 24 24"><path d="M2 16V7h11l3 4h4l2 2v3h-2"/><path d="M2 16h2M9 16h7"/><circle cx="6.5" cy="16.5" r="2"/><circle cx="18" cy="16.5" r="2"/><circle cx="8" cy="10" r="1.2"/><path d="M8 11.5v2l1.5 1"/></symbol>
+  <symbol id="a-amb" viewBox="0 0 24 24"><path d="M2 16V7h12v9M14 10h4l3 3v3h-2"/><path d="M2 16h2M9 16h7"/><circle cx="6.5" cy="16.5" r="2"/><circle cx="18" cy="16.5" r="2"/><path d="M8 9.5v4M6 11.5h4"/></symbol>
+  <symbol id="a-car" viewBox="0 0 24 24"><path d="M3 15v-3l2-4h10l3 4h3v3h-2"/><path d="M3 15h2M10 15h6"/><circle cx="7.5" cy="15.5" r="2"/><circle cx="18" cy="15.5" r="2"/></symbol>
+  <symbol id="a-trailer" viewBox="0 0 24 24"><path d="M3 8h13v8H3zM16 13h5"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="12" cy="17.5" r="1.8"/><path d="M6 11h2M10 11h2"/></symbol>
+  <symbol id="a-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></symbol>
 </svg>
 
 <div class="app">
   <aside class="side" aria-label="Sidebar">
     <div class="side-top">
-      <div class="brand"><div class="mark" aria-hidden="true">H</div><b>Headcount</b></div>
+      <div class="brand"><img class="logo" src="/static/logo-mark.svg" alt="" width="28" height="28" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'mark',textContent:'H'}))"><b>Headcount</b></div>
       <div class="sec">
         <div class="sec-label">Evacuation operations</div>
         <a class="nav-item active" href="#" aria-current="page"><svg class="i"><use href="#i-board"/></svg>Dispatch board<span class="count" id="nav-count"></span></a>
@@ -364,6 +381,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     </section>
 
     <div class="banners">
+      <div class="banner ready" id="ready"><svg class="i"><use href="#i-play"/></svg><div class="txt"><b>Ready.</b> <span id="ready-text">Press Start calls to send the evacuation order.</span></div></div>
       <div class="banner offline" id="offline" role="alert"><svg class="i"><use href="#i-alert"/></svg><div class="txt" id="offline-text"></div></div>
       <div class="banner notice" id="notice" role="status"></div>
       <div class="banner welfare" id="welfare" role="alert"><svg class="i"><use href="#i-pin"/></svg><div class="txt" id="welfare-text"></div></div>
@@ -388,15 +406,11 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
 
     <div class="table-wrap">
       <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row for details.">
-        <colgroup>
-          <col class="c-rank"><col class="c-res"><col class="c-status"><col class="c-prio"><col class="c-why col-why">
-          <col class="c-note col-note"><col class="c-assist col-assist"><col class="c-calls col-calls"><col class="c-family col-family"><col class="c-engine col-engine"><col class="c-updated col-updated">
-        </colgroup>
         <thead><tr>
-          <th>#</th><th>Resident</th><th>Status</th><th>Priority</th><th class="col-why">Why</th>
-          <th class="col-note">Responder note</th><th class="col-assist">Assist</th><th class="col-calls">Calls</th><th class="col-family">Family</th><th class="col-engine">Heard by</th><th class="col-updated">Updated</th>
+          <th class="c-rank">#</th><th class="c-res">Resident</th><th class="c-status">Status</th><th class="c-prio">Priority</th><th class="c-why col-why">Why</th>
+          <th class="c-note col-note">Responder note</th><th class="c-assist col-assist">Assist</th><th class="c-calls col-calls">Calls</th><th class="c-family col-family">Family</th><th class="c-updated col-updated">Updated</th>
         </tr></thead>
-        <tbody id="rows"><tr class="table-empty"><td colspan="11">Waiting for data…</td></tr></tbody>
+        <tbody id="rows"><tr class="table-empty"><td colspan="10">Waiting for data…</td></tr></tbody>
       </table>
     </div>
 
@@ -576,6 +590,13 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
 
   // ------------------------------------------------------------------ banners
   function renderBanners(st) {
+    const ready = $("ready");
+    if (!st.started_at) {
+      const n = (st.total || 0).toLocaleString();
+      $("ready-text").textContent = "Headcount will call " + n + " residents in " + (st.zone || "this zone") +
+        ", retry anyone who doesn't answer up to " + (st.max_attempts || 3) + " times, and flag who needs help. Press Start calls to send the evacuation order.";
+      ready.classList.add("show");
+    } else ready.classList.remove("show");
     const welfare = (st.residents || []).filter((r) => r.status === "WELFARE_CHECK");
     const w = $("welfare");
     if (welfare.length) {
@@ -601,13 +622,21 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     return h + '</span><span class="n">' + esc(score) + "</span>";
   }
   // resident.assist = {transport, shelter, shelter_why[], needs[]}; may be missing on older servers
-  const shelterName = (s) => String(s || "").replace(/\s*\(demo\)\s*$/i, "");
+  // short names for the column; the full name is in the tooltip and the row detail
+  const SHELTER_SHORT = [[/high school/i, "Alpine HS gym"], [/medical/i, "Viejas Medical"], [/community/i, "Community Ctr"], [/fairground/i, "Fairgrounds"]];
+  const shelterName = (s) => {
+    const full = String(s || "").replace(/\s*\(demo\)\s*$/i, "");
+    for (const [re, short] of SHELTER_SHORT) if (re.test(full)) return short;
+    return full;
+  };
+  const TRANSPORT_ICON = { "wheelchair van": "a-van", ambulance: "a-amb", "standard car": "a-car", "large-animal trailer": "a-trailer" };
   function assistShort(a) {
     if (!a || (!a.transport && !a.shelter)) return '<span class="dash">—</span>';
     const parts = [];
     if (a.transport) parts.push(a.transport.charAt(0).toUpperCase() + a.transport.slice(1));
     if (a.shelter) parts.push(shelterName(a.shelter));
-    return '<span class="assist"><span class="ic" aria-hidden="true">' + (a.transport ? "➜" : "⌂") + "</span>" + esc(parts.join(" → ")) + "</span>";
+    const icon = TRANSPORT_ICON[(a.transport || "").toLowerCase()] || (a.transport ? "a-car" : "a-home");
+    return '<span class="assist"><svg class="ai" aria-hidden="true"><use href="#' + icon + '"/></svg><span class="at">' + esc(parts.join(" \u2192 ")) + "</span></span>";
   }
   function assistLong(a) {
     if (!a) return "";
@@ -641,9 +670,9 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     const fam = r.family ? '<span class="fam"><span class="ic" aria-hidden="true">✉</span>' + esc(familyShort(r.family)) + "</span>" : '<span class="dash">—</span>';
     return (
       '<td class="c-rank">' + rank + "</td>" +
-      '<td title="' + esc(r.name + ", " + r.age + " · " + (LANG_NAME[r.lang] || r.lang || "") + " · " + r.address) + '"><span class="res-name">' + esc(r.name) + '</span><span class="res-meta">' + esc(r.age) + "</span>" +
-        '<span class="lang">' + esc((r.lang || "").toUpperCase()) + "</span>" + (r.contact_mode === "text" ? '<span class="lang text" title="Checks in by text message">TEXT</span>' : "") +
-        (r.real_phone ? '<span class="lang real">REAL</span>' : "") + "</td>" +
+      '<td title="' + esc(r.name + ", " + r.age + " · " + (LANG_NAME[r.lang] || r.lang || "") + " · " + r.address) + '"><div class="resline"><span class="res-name">' + esc(r.name) + '</span><span class="res-meta">' + esc(r.age) + "</span>" +
+        (r.lang === "es" ? '<span class="lang" title="Spanish speaker">ES</span>' : "") + (r.contact_mode === "text" ? '<span class="lang text" title="Checks in by text message">TEXT</span>' : "") +
+        (r.real_phone ? '<span class="lang real">REAL</span>' : "") + "</div></td>" +
       '<td><span class="pill st-' + st + (st === "CALLING" ? " calling" : "") + '"><span class="d"></span>' + esc(LABEL[st]) + "</span></td>" +
       '<td><div class="prio" title="Priority score ' + esc(r.score) + '">' + prioBar(r.score || 0) + "</div></td>" +
       '<td class="col-why" title="' + esc(why.join(", ")) + '">' + whyHtml + "</td>" +
@@ -651,7 +680,6 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
       '<td class="col-assist" title="' + esc(assistLong(r.assist)) + '">' + assistShort(r.assist) + "</td>" +
       '<td class="col-calls"><span class="calls">' + esc(r.attempts || 0) + "/" + esc(max) + "</span></td>" +
       '<td class="col-family" title="' + esc(r.family || "") + '">' + fam + "</td>" +
-      '<td class="col-engine">' + engineTag(rd && rd.engine) + "</td>" +
       '<td class="col-updated muted">' + (r.updated && r.status !== "PENDING" ? ago(r.updated) : "—") + "</td>"
     );
   }
@@ -667,7 +695,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     add("Priority", esc(r.score));
     add("Calls", esc(r.attempts || 0) + " of " + esc(Math.max(maxAttempts || 3, r.attempts || 0)));
     add("Family", esc(r.family || "not texted yet"));
-    add("Heard by", rd && rd.engine ? esc(rd.engine) : "");
+    add("Heard by", rd && rd.engine ? engineTag(rd.engine) + ' <span class="muted">' + esc(rd.engine) + "</span>" : "");
     add("Contact", r.contact_mode === "text" ? "Text message (SMS check-in)" : "");
     const a = r.assist;
     if (a) {
@@ -675,7 +703,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
       add("Shelter", a.shelter ? esc(a.shelter) + (a.shelter_why && a.shelter_why.length ? ' <span class="muted">\u00b7 ' + esc(a.shelter_why.join(", ")) + "</span>" : "") : (a.shelter_why && a.shelter_why.length ? esc(a.shelter_why.join(", ")) : ""));
       add("Bring", a.needs && a.needs.length ? esc(a.needs.join("; ")) : "");
     }
-    return '<td colspan="11"><dl>' + d.join("") + "</dl></td>";
+    return '<td colspan="10"><dl>' + d.join("") + "</dl></td>";
   }
   function renderTable(st) {
     const all = st.residents || [];   // already sorted by the server: never re-sort
@@ -695,7 +723,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     });
     const body = $("rows");
     if (!rows.length) {
-      body.innerHTML = '<tr class="table-empty"><td colspan="11">' + (all.length ? "No residents match this view." : "No residents in this zone.") + "</td></tr>";
+      body.innerHTML = '<tr class="table-empty"><td colspan="10">' + (all.length ? "No residents match this view." : "No residents in this zone.") + "</td></tr>";
       return;
     }
     // keyed update: reuse rows, only rewrite the ones that changed
@@ -751,8 +779,8 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     const el = document.createElement("div");
     el.className = "ev k-" + (KINDS.has(e.kind) ? e.kind : "info");
     el.title = timeOfDay(e.t) + "  " + (e.name ? e.name + ": " : "") + e.msg;
-    el.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="t">' + esc(timeOfDay(e.t)) + '</span><span class="m">' +
-      (e.name ? "<b>" + esc(e.name) + "</b> " : "") + esc(e.msg) + "</span>";
+    el.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="n">' + esc(e.name || "Headcount") +
+      '</span><span class="t">' + esc(timeOfDay(e.t)) + '</span><span class="m">' + esc(e.msg) + "</span>";
     return el;
   }
   function renderFeed(st) {
