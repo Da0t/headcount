@@ -39,6 +39,8 @@ class TwilioClient:
             method="POST",
             status_callback=f"{base}/twilio/status/{r.id}?attempt={attempt}",
             status_callback_method="POST",
+            # every stage, so the board can show a live timeline: initiated, ringing, answered, completed
+            status_callback_event=["initiated", "ringing", "answered", "completed"],
             timeout=int(self.settings.ring_timeout),
         )
         return call.sid
