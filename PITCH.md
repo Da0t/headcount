@@ -1,12 +1,12 @@
 # Headcount pitch (2 minutes)
 
-Spoken lines are in plain text. *Stage directions are in italics.* Read at a normal pace, it runs about 1:50.
+Spoken lines are in plain text. *Stage directions are in italics.* The spoken lines are about 260 words, roughly 1:45 at a normal pace, so keep the demo pauses short.
 
 ## Script
 
 **0:00 · Maria**
 
-Santa Ana winds. An evacuation order goes out for Alpine. Maria Gonzalez is 81, on oxygen, has no car, and speaks Spanish. The alert reached her phone. Did she get out? Nobody knows.
+Santa Ana winds. An evacuation order goes out for Tierrasanta, in San Diego. Maria Gonzalez is 81, on oxygen, has no car, and speaks Spanish. The alert reached her phone. Did she get out? Nobody knows.
 
 **0:20 · The gap**
 
@@ -30,9 +30,9 @@ Her daughter Ana just got a text: her mom answered, needs a ride, and a responde
 
 George is hard of hearing, so he never gets a call. He gets a text and replies 1.
 
-*Point at Walter's row.*
+*Point at the map.*
 
-Walter never answers. Headcount doesn't guess. After three calls, the board says **send a person**, with his address.
+Tomasina is 96 and bedridden, and she never picks up. Headcount doesn't guess. After three calls her pin turns red, and a wheelchair van routes from the fire base to her, then on to the Rec Center shelter, which has backup power for her oxygen. Every place on this map is fictional.
 
 *Ask VoiceOS out loud: "Who still needs help?" Let it answer.*
 
