@@ -310,6 +310,88 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   tbody td, thead th { padding: 0 6px; }
   thead th { padding: 8px 6px; }
 }
+/* ------------------------------------------------------------------ resident profile drawer */
+.scrim { position: fixed; inset: 0; background: rgba(20, 20, 30, .18); z-index: 20; }
+.scrim[hidden], .drawer[hidden] { display: none; }
+.drawer {
+  position: fixed; top: 12px; right: 12px; bottom: 12px; width: 392px; max-width: calc(100vw - 24px); z-index: 21;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 40px rgba(20, 20, 30, .18);
+  display: flex; flex-direction: column; min-height: 0; animation: slidein .22s ease-out both;
+}
+@keyframes slidein { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.dr-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 16px 8px; }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-weight: 700; font-size: 17px; color: #fff; background: var(--av, var(--gray));
+}
+.dr-id { flex: 1; min-width: 0; }
+.dr-id h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.dr-id .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.dr-meta { padding: 0 16px 8px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+.dr-meta dt { color: var(--muted); }
+.dr-meta dd { margin: 0; overflow-wrap: anywhere; }
+.dr-actions { display: flex; gap: 8px; padding: 8px 16px 16px; border-bottom: 1px solid var(--line); }
+.dr-actions .cta, .dr-actions .ghost { flex: 1; justify-content: center; height: 36px; }
+.dr-tabs { display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.dr-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; font-size: 13.5px; }
+.dr-body dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; }
+.dr-body dt { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding-top: 2px; }
+.dr-body dd { margin: 0; overflow-wrap: anywhere; }
+.dr-body .quote { font-style: italic; color: var(--text-2); font-size: 15px; }
+.dr-body .empty { color: var(--muted); }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; }
+.timeline li { position: relative; padding: 0 0 14px 20px; border-left: 2px solid var(--line); }
+.timeline li:last-child { border-left-color: transparent; }
+.timeline li::before { content: ""; position: absolute; left: -6px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--k, var(--faint)); border: 2px solid #fff; }
+.timeline .tt { color: var(--muted); font-size: 11.5px; }
+.timeline .tm { color: var(--text); }
+.timeline .k-alert, .timeline .k-error { --k: var(--red); }
+.timeline .k-warn { --k: var(--orange); }
+.timeline .k-good { --k: var(--green); }
+.timeline .k-family { --k: var(--violet); }
+.timeline .k-speech { --k: var(--blue); }
+.needs { margin: 0; padding-left: 18px; }
+.copied { color: var(--green); }
+
+
+/* live demo strip + big quote */
+.live { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; list-style: none; margin: 0; padding: 0; }
+.steps li { font-size: 10.5px; font-weight: 600; color: var(--faint); text-align: center; padding-top: 14px; position: relative; letter-spacing: .02em; }
+.steps li::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; border-radius: 3px; background: var(--line); }
+.steps li.done { color: var(--text-2); }
+.steps li.done::before { background: var(--green); }
+.steps li.now { color: var(--accent); }
+.steps li.now::before { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.steps li.bad { color: var(--red); }
+.steps li.bad::before { background: var(--red); }
+.live-msg { margin-top: 10px; font-size: 13px; color: var(--text-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.said { margin-top: 10px; font-size: 19px; line-height: 1.35; font-weight: 500; color: var(--text); }
+.said-note { margin-top: 4px; font-size: 13.5px; color: var(--text-2); }
+.confirm { display: none; margin: 0 16px 12px; padding: 10px 12px; border-radius: 10px; background: var(--red-soft); border: 1px solid #f6c9ca; color: #a51f22; font-size: 13.5px; }
+.confirm.show { display: block; }
+.confirm .row { display: flex; gap: 8px; margin-top: 8px; }
+.btn-danger { border: 0; background: var(--red); color: #fff; border-radius: 9px; height: 32px; padding: 0 12px; font-weight: 600; cursor: pointer; }
+.dr-actions .ghost.icon { flex: none; width: 36px; padding: 0; justify-content: center; }
+body.fs .drawer { width: 460px; }
+body.fs .said { font-size: 23px; }
+body.fs .steps li { font-size: 12px; }
+/* ------------------------------------------------------------------ fullscreen / presentation */
+.feed-toggle { border: 0; background: none; color: var(--muted); font-size: 11px; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.feed-toggle:hover { color: var(--text); }
+body.fs .side-top .sec { display: none; }
+body.fs .app { grid-template-columns: 300px minmax(0, 1fr); }
+body.fs.feed-hidden .app { grid-template-columns: 0 minmax(0, 1fr); }
+body.fs.feed-hidden .side { overflow: hidden; border: 0; }
+body.fs .kpi .num { font-size: 33px; }
+body.fs .kpi .label { font-size: 14px; }
+body.fs .head h1 { font-size: 26px; }
+body.fs .table-wrap { max-height: calc(100vh - 236px); }
+body.fs tbody td { height: 44px; font-size: 15px; }
+.fs-show { display: none; }
+body.fs .fs-show { display: inline-flex; }
+body.fs .fs-hide { display: none; }
+body.fs .icon-btn#fullscreen { border-color: var(--accent); color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -331,6 +413,8 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
   <symbol id="a-car" viewBox="0 0 24 24"><path d="M3 15v-3l2-4h10l3 4h3v3h-2"/><path d="M3 15h2M10 15h6"/><circle cx="7.5" cy="15.5" r="2"/><circle cx="18" cy="15.5" r="2"/></symbol>
   <symbol id="a-trailer" viewBox="0 0 24 24"><path d="M3 8h13v8H3zM16 13h5"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="12" cy="17.5" r="1.8"/><path d="M6 11h2M10 11h2"/></symbol>
   <symbol id="a-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-exitfull" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></symbol>
 </svg>
 
@@ -354,7 +438,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     <div class="feed-sec">
       <div class="feed-head">
         <div class="sec-label"><span class="live-dot" aria-hidden="true"></span>Live feed</div>
-        <span class="muted" style="font-size:11px">newest first</span>
+        <span><span class="muted fs-hide" style="font-size:11px">newest first</span><button class="feed-toggle fs-show" id="feedToggle" type="button" aria-pressed="false">Hide feed</button></span>
       </div>
       <div class="feed" id="feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Live event feed" tabindex="0">
         <div class="empty">No events yet. Start calls to send the evacuation order.</div>
@@ -369,7 +453,8 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
       <span class="zone" id="zone-line"></span>
       <span class="spacer"></span>
       <a class="icon-btn" id="phoneIcon" href="/phone" target="_blank" rel="noopener" aria-label="Open phone simulator" title="Phone simulator"><svg class="i"><use href="#i-phone"/></svg></a>
-      <button class="icon-btn" id="fullscreen" type="button" aria-label="Full screen" title="Full screen"><svg class="i"><use href="#i-full"/></svg></button>
+      <button class="ghost outline" id="callMe" type="button" hidden><svg class="i"><use href="#i-phone"/></svg>Call me</button>
+      <button class="icon-btn" id="fullscreen" type="button" aria-label="Full screen (F)" title="Full screen (F)" aria-pressed="false"><svg class="i"><use href="#i-full"/></svg></button>
       <button class="cta" id="start" type="button"><svg class="i"><use href="#i-play"/></svg><span id="start-label">Start calls</span></button>
     </div>
 
@@ -405,7 +490,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     </div>
 
     <div class="table-wrap">
-      <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row for details.">
+      <table id="rows-table" tabindex="-1" aria-label="Residents by priority, highest first. Select a row to open the resident profile.">
         <thead><tr>
           <th class="c-rank">#</th><th class="c-res">Resident</th><th class="c-status">Status</th><th class="c-prio">Priority</th><th class="c-why col-why">Why</th>
           <th class="c-note col-note">Responder note</th><th class="c-assist col-assist">Assist</th><th class="c-calls col-calls">Calls</th><th class="c-family col-family">Family</th><th class="c-updated col-updated">Updated</th>
@@ -417,6 +502,36 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     <footer>Demo. Residents are fictional. Headcount is not an official alert system; in an emergency call 911.</footer>
   </main>
 </div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-name" hidden>
+  <div class="dr-head">
+    <div class="avatar" id="dr-avatar" aria-hidden="true"></div>
+    <div class="dr-id"><h2 id="dr-name"></h2><div class="sub" id="dr-sub"></div></div>
+    <button class="icon-btn" id="dr-close" type="button" aria-label="Close resident profile"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <dl class="dr-meta" id="dr-meta"></dl>
+  <div class="dr-actions">
+    <button class="cta" id="dr-call" type="button"><svg class="i"><use href="#i-phone"/></svg><span id="dr-call-label">Call now</span></button>
+    <a class="ghost" id="dr-answer" href="/phone" target="_blank" rel="noopener">Answer as resident</a>
+    <button class="ghost icon" id="dr-copy" type="button" aria-label="Copy address" title="Copy address"><svg class="i"><use href="#i-pin"/></svg></button>
+  </div>
+  <div class="confirm" id="dr-confirm" role="alertdialog" aria-labelledby="dr-confirm-text">
+    <div id="dr-confirm-text">This places a REAL phone call to this resident's real number. Continue?</div>
+    <div class="row"><button class="btn-danger" id="dr-confirm-yes" type="button">Place real call</button><button class="ghost" id="dr-confirm-no" type="button">Cancel</button></div>
+  </div>
+  <section class="live" aria-live="polite" aria-label="Live call status">
+    <ol class="steps" id="dr-steps"></ol>
+    <div class="live-msg" id="dr-live-msg"></div>
+    <div id="dr-said"></div>
+  </section>
+  <div class="dr-tabs" role="tablist" aria-label="Resident details">
+    <button class="tab" role="tab" id="drt-activity" aria-controls="dr-body" aria-selected="true" data-dtab="activity">Activity</button>
+    <button class="tab" role="tab" id="drt-answer" aria-controls="dr-body" aria-selected="false" data-dtab="answer">Answer</button>
+    <button class="tab" role="tab" id="drt-assist" aria-controls="dr-body" aria-selected="false" data-dtab="assist">Assist</button>
+    <button class="tab" role="tab" id="drt-family" aria-controls="dr-body" aria-selected="false" data-dtab="family">Family</button>
+  </div>
+  <div class="dr-body" id="dr-body" role="tabpanel" tabindex="0"></div>
+</aside>
 
 <script src="/static/headcount-api.js"></script>
 <script>
@@ -735,12 +850,11 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
       let tr = existing.get(k);
       if (!tr) {
         tr = document.createElement("tr"); tr.dataset.k = k; tr.dataset.id = r.id; tr.className = "r";
-        tr.tabIndex = 0;
+        tr.tabIndex = 0; tr.setAttribute("aria-haspopup", "dialog");
       }
       existing.delete(k);
       const html = rowHtml(r, rank, st.max_attempts);
       if (tr._html !== html) { tr.innerHTML = html; tr._html = html; }
-      tr.setAttribute("aria-expanded", openRows.has(r.id) ? "true" : "false");
       tr.classList.toggle("welfare-row", r.status === "WELFARE_CHECK");
       const until = flashUntil.get(r.id);
       if (until && Date.now() < until) tr.classList.add("flash");
@@ -759,11 +873,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     order.forEach((tr, idx) => { if (body.children[idx] !== tr) body.insertBefore(tr, body.children[idx] || null); });
     existing.forEach((tr) => tr.remove());
   }
-  function toggleRow(tr) {
-    const id = Number(tr.dataset.id);
-    if (openRows.has(id)) openRows.delete(id); else openRows.add(id);
-    if (last) renderTable(last);
-  }
+  function toggleRow(tr) { openDrawer(Number(tr.dataset.id), tr); }
   $("rows").addEventListener("click", (ev) => {
     const tr = ev.target.closest("tr.r");
     if (tr) toggleRow(tr);
@@ -811,6 +921,7 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     renderBanners(st);
     renderTable(st);
     renderFeed(st);
+    renderDrawer(st);
   }
 
   // ------------------------------------------------------------------ connection + polling
@@ -840,7 +951,12 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     onError(e, failures) { if (failures >= 2) setOffline(true, e, failures); },
   });
   HeadcountAPI.poll(api.health, 10000, {
-    onData(h) { health = h; renderSystems(last); },
+    onData(h) {
+      health = h; renderSystems(last);
+      const demo = h && h.demo_rid != null ? h.demo_rid : null;
+      $("callMe").hidden = demo === null;
+      $("callMe").dataset.rid = demo === null ? "" : demo;
+    },
     onError() { /* the state poll reports connection problems */ },
   });
   setInterval(() => { if (last) renderHeader(last); }, 500);
@@ -870,18 +986,244 @@ body.stale main .kpis, body.stale main .table-wrap { opacity: .5; filter: graysc
     catch (e) { btn.setAttribute("aria-pressed", on ? "false" : "true"); notice("Could not change autopilot: " + e.message); }
     finally { apBusy = false; renderControls(last); }
   });
-  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs > .tab").forEach((b) => b.addEventListener("click", () => {
     tab = b.dataset.tab;
-    document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === b ? "true" : "false"));
+    document.querySelectorAll(".tabs > .tab").forEach((x) => x.setAttribute("aria-selected", x === b ? "true" : "false"));
     if (last) renderTable(last);
   }));
   $("q").addEventListener("input", (ev) => { query = ev.target.value; if (last) renderTable(last); });
-  $("fullscreen").addEventListener("click", () => {
-    try {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else document.documentElement.requestFullscreen();
-    } catch (e) { /* not supported */ }
+  // ------------------------------------------------------------------ resident profile drawer
+  const AV_COLOR = { WELFARE_CHECK: "var(--red)", NEEDS_MEDICAL: "var(--red)", NEEDS_RIDE: "var(--accent)", NEEDS_CALLBACK: "var(--amber)",
+    STAYING: "var(--gray)", OUT: "var(--green)", CALLING: "var(--blue)", IN_CALL: "var(--blue)" };
+  let drawerId = null, drawerTab = "activity", drawerReturn = null;
+  const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  function dl(pairs) {
+    const rows = pairs.filter((p) => p[1]).map((p) => "<dt>" + p[0] + "</dt><dd>" + p[1] + "</dd>").join("");
+    return rows ? "<dl>" + rows + "</dl>" : "";
+  }
+  function drawerBody(r, st) {
+    const rd = r.reading || null, a = r.assist || null;
+    if (drawerTab === "activity") {
+      const src = detail && detail.id === r.id && detail.events ? detail.events : (st.events || []).filter((e) => e.rid === r.id);
+      const evs = src.slice().reverse();
+      if (!evs.length) return '<p class="empty">No activity yet. Calls start when the evacuation order goes out.</p>';
+      return '<ol class="timeline">' + evs.map((e) => '<li class="k-' + (KINDS.has(e.kind) ? e.kind : "info") + '"><div class="tt">' +
+        esc(timeOfDay(e.t)) + '</div><div class="tm">' + esc(e.msg) + "</div></li>").join("") + "</ol>";
+    }
+    if (drawerTab === "answer") {
+      if (!rd) return '<p class="empty">' + (r.status === "WELFARE_CHECK" ? "Never reached after " + esc(r.attempts) + " calls. Send a person to " + esc(r.address) + "." : "No answer yet.") + "</p>";
+      return dl([
+        ["They said", rd.quote ? '<span class="quote">“' + esc(rd.quote) + "”</span>" : ""],
+        ["Note", esc(rd.responder_note || "")],
+        ["Heard as", '<span class="pill st-' + esc(rd.answer) + '"><span class="d"></span>' + esc(LABEL[rd.answer] || rd.answer) + "</span>"],
+        ["Heard by", rd.engine ? engineTag(rd.engine) + ' <span class="muted">' + esc(rd.engine) + "</span>" : ""],
+        ["With them", rd.people_with_them ? esc(rd.people_with_them) + " other " + (rd.people_with_them === 1 ? "person" : "people") : ""],
+        ["Mobility", rd.mobility_help ? "Needs help moving" : ""],
+        ["Equipment", (rd.medical_equipment || []).map(esc).join(", ")],
+        ["Pets", (rd.pets || []).map(esc).join(", ")],
+        ["Where", esc(rd.where_they_are || "")],
+      ]);
+    }
+    if (drawerTab === "assist") {
+      if (!a) return '<p class="empty">No assist plan from the server.</p>';
+      return dl([
+        ["Transport", a.transport ? '<span class="assist"><svg class="ai" aria-hidden="true"><use href="#' + (TRANSPORT_ICON[a.transport.toLowerCase()] || "a-car") + '"/></svg>' + esc(a.transport) + "</span>" : "None needed"],
+        ["Shelter", a.shelter ? esc(a.shelter) : "None"],
+        ["Why", (a.shelter_why || []).map(esc).join("; ")],
+        ["Bring", a.needs && a.needs.length ? '<ul class="needs">' + a.needs.map((n) => "<li>" + esc(n) + "</li>").join("") + "</ul>" : ""],
+      ]) || '<p class="empty">No special needs known.</p>';
+    }
+    return dl([
+      ["Status", esc(r.family || "Not texted yet")],
+      ["When", r.family ? "Texted when " + esc(r.first || r.name) + " was accounted for" : ""],
+    ]) + '<p class="muted" style="margin-top:16px">Families get one text the moment their person is accounted for, or when a responder is sent.</p>';
+  }
+  function renderDrawer(st) {
+    if (drawerId === null || !st) return;
+    const r = (st.residents || []).find((x) => x.id === drawerId);
+    if (!r) { closeDrawer(); return; }
+    const av = $("dr-avatar");
+    av.textContent = initials(r.name);
+    av.style.setProperty("--av", AV_COLOR[r.status] || "var(--gray)");
+    $("dr-name").textContent = r.name;
+    $("dr-sub").innerHTML = esc(r.age) + " · " + '<span class="pill st-' + esc(r.status) + '"><span class="d"></span>' + esc(LABEL[r.status] || r.status) + "</span>";
+    const meta = [
+      ["Address", esc(r.address)],
+      ["Language", esc(LANG_NAME[r.lang] || r.lang || "")],
+      ["Contact", r.contact_mode === "text" ? '<span class="lang text">TEXT</span> Checks in by text message' : "Phone call"],
+      ["Calls", esc(r.attempts || 0) + " of " + esc(Math.max(st.max_attempts || 3, r.attempts || 0))],
+      ["Priority", esc(r.score) + ((r.why || []).length ? ' <span class="muted">· ' + (r.why || []).map(esc).join(", ") + "</span>" : "")],
+    ];
+    const metaHtml = meta.map((p) => "<dt>" + p[0] + "</dt><dd>" + p[1] + "</dd>").join("");
+    if ($("dr-meta")._h !== metaHtml) { $("dr-meta").innerHTML = metaHtml; $("dr-meta")._h = metaHtml; }
+    $("dr-answer").href = "/phone?" + (MOCK ? "mock=1&" : "") + "rid=" + encodeURIComponent(r.id);
+    const ringing = r.channel === "sim" && (r.status === "CALLING" || r.status === "IN_CALL");
+    $("dr-answer").title = ringing ? "Their phone is ringing in the simulator" : "Opens the phone simulator; answer when their call rings";
+    renderLive(r, st);
+    const body = drawerBody(r, st);
+    if ($("dr-body")._h !== body) { $("dr-body").innerHTML = body; $("dr-body")._h = body; }
+  }
+  function openDrawer(id, fromEl) {
+    drawerId = id; drawerReturn = fromEl || document.activeElement;
+    $("scrim").hidden = false; $("drawer").hidden = false;
+    $("dr-meta")._h = $("dr-body")._h = $("dr-steps")._h = $("dr-live-msg")._h = $("dr-said")._h = null;
+    hideConfirm();
+    startDetailPoll(id);
+    renderDrawer(last);
+    $("dr-close").focus();
+  }
+  function closeDrawer() {
+    if (drawerId === null) return;
+    const id = drawerId;
+    drawerId = null;
+    stopDetailPoll(); hideConfirm();
+    $("scrim").hidden = true; $("drawer").hidden = true;
+    const back = document.querySelector('tr.r[data-id="' + id + '"]') || drawerReturn;
+    if (back && back.focus) back.focus();
+  }
+  $("dr-close").addEventListener("click", closeDrawer);
+  $("scrim").addEventListener("click", closeDrawer);
+  document.querySelectorAll("[data-dtab]").forEach((b) => b.addEventListener("click", () => {
+    drawerTab = b.dataset.dtab;
+    document.querySelectorAll("[data-dtab]").forEach((x) => x.setAttribute("aria-selected", x === b ? "true" : "false"));
+    $("dr-body")._h = null;
+    renderDrawer(last);
+  }));
+  $("dr-copy").addEventListener("click", async () => {
+    const r = last && (last.residents || []).find((x) => x.id === drawerId);
+    if (!r) return;
+    let ok = false;
+    try { await navigator.clipboard.writeText(r.address); ok = true; } catch (e) { ok = false; }
+    $("dr-copy").title = ok ? "Copied " + r.address : r.address;
+    $("dr-copy").classList.toggle("copied", ok);
+    setTimeout(() => { $("dr-copy").title = "Copy address"; $("dr-copy").classList.remove("copied"); }, 1800);
   });
+  $("drawer").addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { ev.preventDefault(); closeDrawer(); return; }
+    if (ev.key !== "Tab") return;
+    const f = [...$("drawer").querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter((el) => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], lastEl = f[f.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); lastEl.focus(); }
+    else if (!ev.shiftKey && document.activeElement === lastEl) { ev.preventDefault(); first.focus(); }
+  });
+
+  // ------------------------------------------------------------------ live demo: per-resident poll, step strip, Call now
+  let detail = null, detailPoll = null, callBusy = false;
+  const STEPS = ["Dialing", "Ringing", "Answered", "Listening", "Understood", "Family texted"];
+  const FINAL = new Set(["OUT", "NEEDS_RIDE", "NEEDS_MEDICAL", "STAYING", "NEEDS_CALLBACK"]);
+  // returns [index of the current step, done?, message, bad?]
+  function stepOf(r, d) {
+    const evs = (d && d.events) || [];
+    const tw = d && d.last_call_status ? d.last_call_status.status : null;
+    if (r.status === "WELFARE_CHECK") return [1, false, "No answer after " + (r.attempts || 0) + " calls. A person is being sent to " + r.address + ".", true];
+    if (FINAL.has(r.status)) return r.family ? [5, true, "Understood and family texted.", false] : [4, true, "Understood.", false];
+    if (r.status === "RETRY_WAIT") return [1, false, "Missed call " + (r.attempts || 0) + ". Retrying shortly.", true];
+    if (r.status === "IN_CALL") {
+      const lastPick = evs.map((e) => e.msg).lastIndexOf(evs.map((e) => e.msg).filter((m) => /^Picked up/.test(m)).pop());
+      const spoke = evs.slice(Math.max(0, lastPick)).some((e) => e.kind === "speech");
+      return spoke ? [3, false, "Listening. Headcount asked again.", false] : [2, false, "Picked up. Headcount is asking if they are out.", false];
+    }
+    if (r.status === "CALLING") {
+      if (tw === "initiated" || tw === "queued" || (r.channel === "twilio" && !tw)) return [0, false, "Dialing" + (r.real_phone ? " a real phone" : "") + " (call " + (r.attempts || 1) + ").", false];
+      return [1, false, "Ringing (call " + (r.attempts || 1) + ").", false];
+    }
+    return [-1, false, r.attempts ? "" : "Not called yet. Press Call now to call just this resident.", false];
+  }
+  function renderLive(r, st) {
+    const d = detail && detail.id === r.id ? detail : null;
+    const [i, done, msg, bad] = stepOf(r, d);
+    const html = STEPS.map((name, k) => {
+      let cls = "";
+      if (k < i || (k === i && done)) cls = "done";
+      else if (k === i) cls = bad ? "bad" : "now";
+      return '<li class="' + cls + '"' + (k === i && !done ? ' aria-current="step"' : "") + ">" + name + "</li>";
+    }).join("");
+    if ($("dr-steps")._h !== html) { $("dr-steps").innerHTML = html; $("dr-steps")._h = html; }
+    const rd = r.reading;
+    let m = esc(msg);
+    if (rd && rd.engine && FINAL.has(r.status)) m += ' <span class="pill st-' + esc(r.status) + '"><span class="d"></span>' + esc(LABEL[r.status]) + "</span> " + engineTag(rd.engine);
+    if (r.channel === "twilio" && d && d.last_call_status && d.last_call_status.status) m += ' <span class="muted">· Twilio: ' + esc(d.last_call_status.status) + "</span>";
+    if ($("dr-live-msg")._h !== m) { $("dr-live-msg").innerHTML = m; $("dr-live-msg")._h = m; }
+    let said = "";
+    if (rd && rd.quote) said = '<div class="said">“' + esc(rd.quote) + '”</div>' + (rd.responder_note ? '<div class="said-note">' + esc(rd.responder_note) + "</div>" : "");
+    else if (d) {
+      const sp = (d.events || []).filter((e) => e.kind === "speech").pop();
+      if (sp) said = '<div class="said-note">' + esc(sp.msg) + "</div>";
+    }
+    if ($("dr-said")._h !== said) { $("dr-said").innerHTML = said; $("dr-said")._h = said; }
+    const live = r.status === "CALLING" || r.status === "IN_CALL";
+    $("dr-call").disabled = callBusy || live || offline;
+    $("dr-call-label").textContent = callBusy ? "Calling…" : live ? "Call in progress" : r.attempts ? "Call again" : "Call now";
+  }
+  function startDetailPoll(id) {
+    stopDetailPoll();
+    if (!api.getResident) return;
+    detailPoll = HeadcountAPI.poll(() => api.getResident(id), 1000, {
+      onData(dd) { if (drawerId === id) { detail = dd; if (last) renderDrawer(last); } },
+      onError() { /* the state poll reports connection problems */ },
+    });
+  }
+  function stopDetailPoll() { if (detailPoll) detailPoll.stop(); detailPoll = null; detail = null; }
+  async function placeCall(confirmed) {
+    const id = drawerId;
+    if (id === null || callBusy) return;
+    const r = last && last.residents.find((x) => x.id === id);
+    if (r && r.real_phone && !confirmed) { showConfirm(); return; }
+    callBusy = true; hideConfirm(); renderDrawer(last);
+    try {
+      await api.callResident(id, !!confirmed);
+    } catch (e) {
+      if (e.status === 409 && /confirm/i.test(e.detail || e.message)) showConfirm();
+      else notice("Could not place the call: " + e.message);
+    } finally { callBusy = false; poller.now(); if (detailPoll) detailPoll.now(); }
+  }
+  function showConfirm() { $("dr-confirm").classList.add("show"); $("dr-confirm-yes").focus(); }
+  function hideConfirm() { $("dr-confirm").classList.remove("show"); }
+  $("dr-call").addEventListener("click", () => placeCall(false));
+  $("dr-confirm-yes").addEventListener("click", () => placeCall(true));
+  $("dr-confirm-no").addEventListener("click", () => { hideConfirm(); $("dr-call").focus(); });
+  $("callMe").addEventListener("click", () => {
+    const rid = Number($("callMe").dataset.rid);
+    if (!rid && rid !== 0) return;
+    openDrawer(rid, $("callMe"));
+    placeCall(false);   // real phones stop at the confirm step
+  });
+
+  // ------------------------------------------------------------------ fullscreen / presentation mode
+  const canFs = !!(document.documentElement.requestFullscreen && document.exitFullscreen);
+  function setPresentation(on) {
+    document.body.classList.toggle("fs", on);
+    const b = $("fullscreen");
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.setAttribute("aria-label", on ? "Exit full screen (F)" : "Full screen (F)");
+    b.title = b.getAttribute("aria-label");
+    b.innerHTML = '<svg class="i"><use href="#' + (on ? "i-exitfull" : "i-full") + '"/></svg>';
+  }
+  async function toggleFullscreen() {
+    const on = !document.body.classList.contains("fs");
+    if (canFs) {
+      try {
+        if (on && !document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else if (!on && document.fullscreenElement) await document.exitFullscreen();
+        return;   // fullscreenchange applies the layout
+      } catch (e) { /* blocked (e.g. inside an iframe): fall back to the layout only */ }
+    }
+    setPresentation(on);
+  }
+  document.addEventListener("fullscreenchange", () => setPresentation(!!document.fullscreenElement));
+  $("feedToggle").addEventListener("click", () => {
+    const hidden = document.body.classList.toggle("feed-hidden");
+    $("feedToggle").textContent = hidden ? "Show feed" : "Hide feed";
+    $("feedToggle").setAttribute("aria-pressed", hidden ? "true" : "false");
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.target.closest && ev.target.closest("input, textarea, [contenteditable]")) return;
+    if (ev.key === "f" || ev.key === "F") { if (drawerId === null) { ev.preventDefault(); toggleFullscreen(); } }
+    else if (ev.key === "Escape" && drawerId !== null) closeDrawer();
+  });
+  $("fullscreen").addEventListener("click", toggleFullscreen);
 })();
 </script>
 </body>
