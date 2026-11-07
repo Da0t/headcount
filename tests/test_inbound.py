@@ -80,3 +80,37 @@ def test_spanish_resident_hears_spanish(api):
     r.phone = "+16195550111"
     res = call_in(c, "+16195550111")
     assert 'language="es-MX"' in res.text and "demostración" in res.text
+
+
+def test_silence_reask_carries_n2(api):
+    c, eng = api
+    call_in(c, "+16195558888")
+    r = eng.residents[max(eng.residents)]
+    res = c.post(f"/twilio/inbound/{r.id}?attempt={r.attempts}&step=1", data={})
+    assert "step=1&amp;n=2" in res.text
+
+
+def test_sim_inbound_same_flow_and_logs(api, monkeypatch):
+    c, eng = api
+    monkeypatch.setattr(main, "DEMO_RID", None)
+    n = len(eng.residents)
+    start = c.post("/api/sim/incoming").json()
+    assert start["step"] == 1 and "This is a demo" in start["say"] and len(eng.residents) == n + 1
+    rid, a = start["rid"], start["attempt"]
+    s1 = c.post(f"/api/sim/inbound/{rid}?attempt={a}&step=1", data={"text": "3"}).json()
+    assert s1["step"] == 2 and not s1["done"] and "pets" in s1["say"]
+    c.post(f"/api/sim/inbound/{rid}?attempt={a}&step=2", data={"text": "just me"})
+    s3 = c.post(f"/api/sim/inbound/{rid}?attempt={a}&step=3", data={"text": "Lantern Way and Quail Ridge"}).json()
+    assert s3["done"] and s3["status"] == "NEEDS_MEDICAL" and "being routed" in s3["say"]
+    assert s3["reading"]["where_they_are"] == "Lantern Way and Quail Ridge"
+    msgs = [e["msg"] for e in eng.events if e["rid"] == rid]
+    assert any(m.startswith("Incoming call from") for m in msgs) and "Pressed 3" in msgs
+    assert any(m.startswith("Inbound step 3") for m in msgs) and any("simulated dispatch" in m for m in msgs)
+
+
+def test_sim_incoming_uses_demo_rid_or_404(api, monkeypatch):
+    c, eng = api
+    monkeypatch.setattr(main, "DEMO_RID", 3)
+    assert c.post("/api/sim/incoming").json()["rid"] == 3
+    assert c.post("/api/sim/incoming", json={"rid": 5}).json()["rid"] == 5
+    assert c.post("/api/sim/incoming?rid=999").status_code == 404

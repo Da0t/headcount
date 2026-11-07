@@ -97,7 +97,7 @@ ROUTED = {
 }
 
 
-def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | None = None) -> str:
+def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | None = None, n: int = 1) -> str:
     """One step of the structured inbound call: speak, then listen for speech (or a digit on step 1)."""
     lang = scripts.lang(r.lang)
     code = scripts.LANG_CODE[lang]
@@ -108,7 +108,7 @@ def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | N
         timeout=7,
         speech_timeout="auto",
         language=code,
-        action=f"{base}/twilio/inbound/{r.id}?attempt={attempt}&step={step}",
+        action=f"{base}/twilio/inbound/{r.id}?attempt={attempt}&step={step}" + (f"&n={n}" if n > 1 else ""),
         method="POST",
         action_on_empty_result=True,
     )

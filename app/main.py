@@ -22,7 +22,7 @@ from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, ZONE_CENTER, load_residents
-from app.twilio_voice import (INBOUND_STEP_LABEL, ROUTED, TwilioClient, inbound_twiml, message_twiml, prompt_twiml, say_twiml, signature_ok,
+from app.twilio_voice import (INBOUND_STEP_LABEL, INBOUND_STEPS, ROUTED, TwilioClient, inbound_twiml, message_twiml, prompt_twiml, say_twiml, signature_ok,
                               text_ask_again)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -371,19 +371,18 @@ async def twilio_incoming(request: Request):
     return _twiml(inbound_twiml(r, attempt, 1, _base()))
 
 
-@app.post("/twilio/inbound/{rid}")
-async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step: int = 1, n: int = 1):
-    params = await _twilio_form(request)
-    r = engine.residents.get(rid)
-    if r is None:
-        return _twiml(say_twiml(scripts.CALLBACK["en"], "en"))
+async def _inbound_step(r, attempt: int, step: int, n: int, digits: str, speech: str) -> dict:
+    """One step of the structured inbound call, shared by the Twilio webhook and the free simulator.
+
+    Returns {"ask": prompt, "step": K, "reask": bool} for the next question, or {"done": True, "say", "reading"}.
+    """
+    rid = r.id
     lang = scripts.lang(r.lang)
     notes = inbound_notes.setdefault((rid, attempt), {})
-    digits = params.get("Digits", "").strip()
-    speech = params.get("SpeechResult", "").strip()
+    digits, speech = (digits or "").strip(), (speech or "").strip()
 
     if step == 1 and not digits and not speech and n < 2:
-        return _twiml(inbound_twiml(r, attempt, 1, _base(), text=scripts.ASK_AGAIN[lang]))
+        return {"ask": scripts.ASK_AGAIN[lang], "step": 1, "reask": True}
     if step == 1 and digits:
         notes["digit"] = digits[:1]
         engine.log(r, f"Pressed {digits[:1]}", "speech")
@@ -393,7 +392,7 @@ async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step
 
     if step < 3:
         engine.log(r, f"Inbound step {step + 1}: {INBOUND_STEP_LABEL[step + 1]}", "info")
-        return _twiml(inbound_twiml(r, attempt, step + 1, _base()))
+        return {"ask": INBOUND_STEPS[step + 1][lang], "step": step + 1, "reask": False}
 
     # all three steps heard: understand them together
     text = " ".join(notes.get(k, "") for k in ("1", "2", "3")).strip()
@@ -417,12 +416,68 @@ async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step
     if keep:  # unclear: start the questions over once
         inbound_notes[(rid, attempt)] = {}
         engine.log(r, f"Inbound step 1 (again): {INBOUND_STEP_LABEL[1]}", "info")
-        return _twiml(inbound_twiml(r, attempt, 1, _base(), text=scripts.ASK_AGAIN[lang]))
+        return {"ask": scripts.ASK_AGAIN[lang], "step": 1, "reask": True, "reading": reading}
     inbound_notes.pop((rid, attempt), None)
     if reading.answer in (Answer.NEEDS_RIDE, Answer.NEEDS_MEDICAL):
         say += ROUTED[lang]
         engine.log(r, "Routing a responder (simulated dispatch, demo).", "alert")
-    return _twiml(say_twiml(say, lang))
+    return {"done": True, "say": say, "reading": reading}
+
+
+@app.post("/twilio/inbound/{rid}")
+async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step: int = 1, n: int = 1):
+    params = await _twilio_form(request)
+    r = engine.residents.get(rid)
+    if r is None:
+        return _twiml(say_twiml(scripts.CALLBACK["en"], "en"))
+    out = await _inbound_step(r, attempt, step, n, params.get("Digits", ""), params.get("SpeechResult", ""))
+    if out.get("done"):
+        return _twiml(say_twiml(out["say"], r.lang))
+    # a re-ask of step 1 after silence carries n=2, so a second silence moves on instead of looping
+    nxt_n = 2 if (out["reask"] and step == 1 and n < 2) else 1
+    return _twiml(inbound_twiml(r, attempt, out["step"], _base(), text=out["ask"] if out["reask"] else None, n=nxt_n))
+
+
+# ---------------------------------------------------------------------- free simulated inbound call (no Twilio)
+
+@app.post("/api/sim/incoming")
+async def sim_incoming(request: Request, rid: Optional[int] = None):
+    """Play "someone calls Headcount" with no phone number: same steps and logs as /twilio/incoming."""
+    if rid is None:
+        try:
+            body = await request.json()
+            rid = int(body["rid"]) if isinstance(body, dict) and body.get("rid") is not None else None
+        except Exception:  # noqa: BLE001 - empty or form body
+            rid = None
+    if rid is None:
+        rid = DEMO_RID
+    r = engine.residents.get(rid) if rid is not None else None
+    if rid is not None and r is None:
+        raise HTTPException(404, f"no resident {rid}")
+    if r is None:
+        r = engine.add_caller("sim-caller", *ZONE_CENTER)
+        r.name = f"Caller {r.id} (simulated)"
+    attempt = engine.begin_inbound(r.id)
+    inbound_notes[(r.id, attempt)] = {}
+    engine.log(r, f"Inbound step 1: {INBOUND_STEP_LABEL[1]}", "info")
+    return {"rid": r.id, "name": r.name, "lang": r.lang, "attempt": attempt, "step": 1,
+            "say": INBOUND_STEPS[1][scripts.lang(r.lang)]}
+
+
+@app.post("/api/sim/inbound/{rid}")
+async def sim_inbound_step(rid: int, attempt: int, step: int = 1, n: int = 1,
+                           text: Optional[str] = Form(None), digits: Optional[str] = Form(None)):
+    r = _resident(rid)
+    t = (text or "").strip()
+    d = (digits or "").strip()
+    if not d and step == 1 and t.isdigit() and len(t) == 1:
+        d, t = t, ""
+    out = await _inbound_step(r, attempt, step, n, d, t)
+    reading = out.get("reading")
+    res = {"say": out.get("say") or out.get("ask"), "step": out.get("step", step), "done": bool(out.get("done")),
+           "reask": bool(out.get("reask")), "status": r.status.value,
+           "reading": reading.model_dump(mode="json") if reading else None}
+    return res
 
 
 _END_REASON = {
