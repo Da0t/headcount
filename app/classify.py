@@ -79,7 +79,7 @@ def _short(exc: BaseException) -> str:
     return f"{name}: {msg[:80]}" if msg else name
 
 
-async def classify_text(text: str, model: str = "gemini-3.5-flash", timeout: float = 6.0,
+async def classify_text(text: str, model: str = "gemini-3.5-flash-lite", timeout: float = 6.0,
                         api_key: Optional[str] = None) -> CallReading:
     """Gemini first; on any error, timeout, or missing key, fall back to keywords."""
     text = (text or "").strip()
@@ -108,7 +108,7 @@ async def classify_text(text: str, model: str = "gemini-3.5-flash", timeout: flo
     return r
 
 
-async def classify_audio(audio_bytes: bytes, mime: str = "audio/webm", model: str = "gemini-3.5-flash",
+async def classify_audio(audio_bytes: bytes, mime: str = "audio/webm", model: str = "gemini-3.5-flash-lite",
                          timeout: float = 6.0, api_key: Optional[str] = None) -> CallReading:
     """Gemini only. If Gemini is unavailable the reading is UNCLEAR, so the call asks again."""
     key = api_key if api_key is not None else _api_key()
