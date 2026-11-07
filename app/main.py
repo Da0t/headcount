@@ -13,13 +13,14 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, Response, Uploa
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import scripts
+from app import accessibility, scripts
 from app.classify import classify_audio, classify_text, digits_reading
 from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, load_residents
-from app.twilio_voice import TwilioClient, prompt_twiml, say_twiml, signature_ok
+from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok, text_ask_again,
+                              text_prompt)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("headcount.main")
@@ -87,7 +88,16 @@ async def phone():
 async def state():
     snap = engine.snapshot()
     snap["zone"] = ZONE
+    for row in snap["residents"]:
+        r = engine.residents.get(row["id"])
+        row["assist"] = accessibility.assist(r) if r else None
     return snap
+
+
+@app.get("/api/accessibility")
+async def accessibility_shelters():
+    """Fictional demo shelters and what each can handle."""
+    return accessibility.shelters()
 
 
 @app.get("/api/health")
@@ -128,7 +138,13 @@ async def autopilot(on: bool = True):
 
 # ---------------------------------------------------------------------- phone simulator
 
+def _mode(r) -> str:
+    return getattr(r, "contact_mode", "voice") or "voice"
+
+
 def _prompt(r) -> str:
+    if _mode(r) == "text":
+        return text_prompt(r.lang)
     return scripts.PROMPT[scripts.lang(r.lang)].format(first=r.first)
 
 
@@ -143,7 +159,7 @@ def _resident(rid: int):
 async def sim_ringing():
     return [
         {"id": r.id, "name": r.name, "first": r.first, "lang": r.lang, "status": r.status.value,
-         "attempt": r.attempts, "prompt": _prompt(r)}
+         "attempt": r.attempts, "prompt": _prompt(r), "contact_mode": _mode(r)}
         for r in engine.ringing_sim()
     ]
 
@@ -266,6 +282,29 @@ async def twilio_status(rid: int, request: Request, attempt: int = 1):
     if reason:
         await engine.no_answer(rid, attempt, reason)  # ignored if they already answered
     return Response(status_code=204)
+
+
+@app.post("/twilio/sms/{rid}")
+async def twilio_sms(rid: int, request: Request, attempt: int = 1):
+    """Inbound SMS for text check-in residents (deaf or hard of hearing). Body is a digit or free text.
+
+    Only reachable from a real phone mapped in residents_phones.json; the demo runs it simulated.
+    """
+    params = await _twilio_form(request)
+    r = engine.residents.get(rid)
+    if r is None:
+        return _twiml(message_twiml(scripts.CALLBACK["en"]))
+    lang = scripts.lang(r.lang)
+    body = params.get("Body", "").strip()
+    if not body:
+        return _twiml(message_twiml(text_ask_again(lang)))
+    reading = digits_reading(body) if body[:1].isdigit() and len(body) <= 3 else None
+    if reading is None:
+        engine.log(r, f"Texted: “{body}”", "speech")
+        reading = await classify_text(body, settings.gemini_model, settings.gemini_timeout,
+                                      api_key=settings.gemini_api_key)
+    say, keep = await engine.respond(rid, attempt, reading)
+    return _twiml(message_twiml(text_ask_again(lang) if keep else say))
 
 
 # ---------------------------------------------------------------------- static assets

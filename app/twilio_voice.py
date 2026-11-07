@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 
 from twilio.request_validator import RequestValidator
+from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
 from app import scripts
@@ -73,6 +74,33 @@ def say_twiml(text: str, lang: str) -> str:
     resp = VoiceResponse()
     resp.say(text, language=scripts.LANG_CODE[scripts.lang(lang)])
     resp.hangup()
+    return str(resp)
+
+
+# Text check-in wording. Agent 1's scripts.py may define TEXT_PROMPT / TEXT_ASK_AGAIN; these are the fallbacks.
+_TEXT_PROMPT = {
+    "en": "Headcount: evacuation order for your area. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+    "es": "Headcount: orden de evacuación para su zona. Responda 1 si ya salió, 2 si necesita transporte, "
+          "3 si necesita ayuda médica.",
+}
+_TEXT_ASK_AGAIN = {
+    "en": "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+    "es": "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
+}
+
+
+def text_prompt(lang: str) -> str:
+    return getattr(scripts, "TEXT_PROMPT", _TEXT_PROMPT)[scripts.lang(lang)]
+
+
+def text_ask_again(lang: str) -> str:
+    return getattr(scripts, "TEXT_ASK_AGAIN", _TEXT_ASK_AGAIN)[scripts.lang(lang)]
+
+
+def message_twiml(text: str) -> str:
+    """Reply to an inbound SMS with one message."""
+    resp = MessagingResponse()
+    resp.message(text)
     return str(resp)
 
 
