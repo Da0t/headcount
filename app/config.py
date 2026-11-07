@@ -31,6 +31,8 @@ class Settings:
 
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
+    twilio_api_key_sid: str = ""  # optional SK... key, used with its secret instead of the auth token for REST calls
+    twilio_api_key_secret: str = ""
     twilio_from_number: str = ""
     public_base_url: str = ""
     twilio_validate: bool = True
@@ -44,10 +46,13 @@ class Settings:
     autopilot: bool = True
 
     @property
+    def twilio_api_key_ready(self) -> bool:
+        return bool(self.twilio_api_key_sid and self.twilio_api_key_secret)
+
+    @property
     def twilio_ready(self) -> bool:
-        return all(
-            [self.twilio_account_sid, self.twilio_auth_token, self.twilio_from_number, self.public_base_url]
-        )
+        creds = bool(self.twilio_auth_token) or self.twilio_api_key_ready
+        return all([self.twilio_account_sid, creds, self.twilio_from_number, self.public_base_url])
 
     @property
     def gemini_ready(self) -> bool:
@@ -62,6 +67,8 @@ def load_settings(**overrides) -> Settings:
         gemini_timeout=_float("HEADCOUNT_GEMINI_TIMEOUT", 6.0),
         twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
         twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
+        twilio_api_key_sid=os.getenv("TWILIO_API_KEY_SID", ""),
+        twilio_api_key_secret=os.getenv("TWILIO_API_KEY_SECRET", ""),
         twilio_from_number=os.getenv("TWILIO_FROM_NUMBER", ""),
         public_base_url=os.getenv("PUBLIC_BASE_URL", "").rstrip("/"),
         twilio_validate=_flag("TWILIO_VALIDATE", "1"),
