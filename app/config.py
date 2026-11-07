@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, fields, replace
 
 try:  # optional
@@ -52,7 +53,9 @@ class Settings:
     @property
     def twilio_ready(self) -> bool:
         creds = bool(self.twilio_auth_token) or self.twilio_api_key_ready
-        return all([self.twilio_account_sid, creds, self.twilio_from_number, self.public_base_url])
+        number_ok = bool(re.fullmatch(r"\+[1-9]\d{7,14}", self.twilio_from_number or ""))  # full E.164, not "+1"
+        url_ok = self.public_base_url.startswith("https://") and "your-tunnel" not in self.public_base_url
+        return bool(self.twilio_account_sid.startswith("AC") and creds and number_ok and url_ok)
 
     @property
     def gemini_ready(self) -> bool:

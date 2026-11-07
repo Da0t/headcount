@@ -274,3 +274,13 @@ def test_family_text_finishing_after_reset_is_ignored():
         assert e.residents[1].family_notified == ""
         assert not any(ev["kind"] == "family" for ev in e.events)
     run(go())
+
+
+def test_twilio_ready_rejects_placeholders():
+    base = dict(twilio_account_sid="AC" + "0" * 32, twilio_api_key_sid="SK1", twilio_api_key_secret="x",
+                twilio_from_number="+16195550100", public_base_url="https://abc.trycloudflare.com")
+    assert load_settings(**base).twilio_ready
+    assert not load_settings(**{**base, "twilio_from_number": "+1"}).twilio_ready
+    assert not load_settings(**{**base, "public_base_url": "https://your-tunnel.trycloudflare.com"}).twilio_ready
+    assert not load_settings(**{**base, "public_base_url": "http://abc.trycloudflare.com"}).twilio_ready
+    assert not load_settings(**{**base, "twilio_api_key_secret": ""}).twilio_ready

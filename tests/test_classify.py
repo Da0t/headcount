@@ -81,3 +81,8 @@ def test_gemini_equipment_normalized_to_english(monkeypatch):
     r = asyncio.run(classify_text("No tengo carro y uso oxígeno", api_key="fake"))
     assert r.medical_equipment == ["oxygen", "dialysis", "cpap"]
     assert r.engine.startswith("Gemini")
+
+
+@pytest.mark.parametrize("text", ["we are out", "I am out already", "We are safe at the shelter", "We evacuated this morning"])
+def test_spelled_out_out_phrases(text):
+    assert keyword_classify(text).answer == Answer.OUT

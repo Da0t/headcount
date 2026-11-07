@@ -215,6 +215,7 @@ STAYING = [
 OUT = [
     "we're out", "i'm out", "already left", "we left", "i left", "we got out", "i got out", "evacuated",
     "at the shelter", "we're safe", "i'm safe", "already gone", "we're gone",
+    "we are out", "i am out", "we are safe", "i am safe", "we got out", "we evacuated", "we are gone",
     "ya salimos", "ya sali", "ya nos fuimos", "ya me fui", "estamos bien", "estamos fuera", "estoy fuera",
     "estamos a salvo", "estoy a salvo",
 ]
