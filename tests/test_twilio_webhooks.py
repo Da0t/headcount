@@ -184,3 +184,13 @@ def test_api_key_client_and_no_token_skips_validation():
     c = TwilioClient(s).client
     assert c.username == "SK123" and c.password == "sekret" and c.account_sid == "AC123"
     assert signature_ok(s, "/twilio/status/1?attempt=1", {}, "anything") is True
+
+
+def test_placeholder_from_number_keeps_calls_off():
+    s = load_settings(twilio_account_sid="AC123", twilio_api_key_sid="SK1", twilio_api_key_secret="x",
+                      twilio_from_number="+1", public_base_url=BASE, phones_file="__none__.json")
+    assert s.twilio_ready  # config alone would say yes
+    assert main._build_twilio(s) is None
+    s2 = load_settings(twilio_account_sid="AC123", twilio_api_key_sid="SK1", twilio_api_key_secret="x",
+                       twilio_from_number="+16195550100", public_base_url=BASE, phones_file="__none__.json")
+    assert main._build_twilio(s2) is not None  # builds a client; nothing is dialed

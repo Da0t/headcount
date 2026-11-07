@@ -5,6 +5,7 @@ Run: uvicorn app.main:app --port 8000
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -28,7 +29,14 @@ STATIC = Path(__file__).parent / "static"
 settings = load_settings()
 
 
+E164 = re.compile(r"^\+[1-9]\d{7,14}$")
+
+
 def _build_twilio(s) -> Optional[TwilioClient]:
+    if s.twilio_ready and not E164.match(s.twilio_from_number):
+        log.warning("TWILIO_FROM_NUMBER is not a full E.164 number (like +16195550100). Real calls are OFF; "
+                    "everything runs simulated.")
+        return None
     if s.twilio_ready:
         try:
             return TwilioClient(s)
@@ -85,7 +93,7 @@ async def state():
 @app.get("/api/health")
 async def health():
     """Readiness at a glance for the board and the demo. Never includes secrets."""
-    return {"ok": True, "gemini": settings.gemini_ready, "twilio": settings.twilio_ready and twilio is not None,
+    return {"ok": True, "gemini": settings.gemini_ready, "twilio": twilio is not None,
             "model": settings.gemini_model, "autopilot": engine.autopilot}
 
 
