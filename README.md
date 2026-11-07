@@ -95,7 +95,7 @@ Open http://localhost:8000 and press **Start**. With no Twilio settings, every r
 
 ## Real phone calls with Twilio
 
-1. **Get a number.** In the Twilio console, buy or use a voice-capable number and put it in `TWILIO_FROM_NUMBER`, along with `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.
+1. **Get a number.** In the Twilio console, buy or use a voice-capable number and put it in `TWILIO_FROM_NUMBER`, along with `TWILIO_ACCOUNT_SID` (starts with `AC`) and `TWILIO_AUTH_TOKEN`. You can use an API key instead of the auth token for placing calls and texts: set `TWILIO_API_KEY_SID` (starts with `SK`) and `TWILIO_API_KEY_SECRET`. You still need the account SID either way. Twilio signs its webhooks with the auth token, so with an API key alone, webhook signature checks are skipped. Add the auth token too if you want them.
 2. **Trial accounts** can only call and text **Verified Caller IDs**, so verify each teammate's phone in the console first. Trial calls also play a "press any key" message before ours; tell whoever answers to press a key. Upgrading (about $20) removes both limits.
 3. **Open a tunnel** so Twilio can reach your laptop:
    ```bash
