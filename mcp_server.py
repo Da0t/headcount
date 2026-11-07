@@ -71,6 +71,20 @@ def _join(parts: list[str]) -> str:
     return ", ".join(parts[:-1]) + ", and " + parts[-1]
 
 
+def _clean_note(note: str, status_words: str) -> str:
+    """Drop note sentences that only repeat the status we already said ('Needs a ride out.')."""
+    kept = [x.strip() for x in (note or "").split(".") if x.strip() and x.strip().lower() not in status_words.lower()]
+    return ". ".join(kept) + "." if kept else ""
+
+
+def _quote(reading: dict) -> str:
+    """Their words, unless it was a keypad press (nothing to quote)."""
+    q = (reading.get("quote") or "").strip()
+    if not q or reading.get("engine") == "keypad" or q.startswith("("):
+        return ""
+    return q
+
+
 def _status_sentence(state: dict) -> str:
     total = state.get("total", len(state.get("residents", [])))
     counts = state.get("counts", {}) or {}
@@ -129,9 +143,11 @@ def who_still_needs_help() -> str:
         note = reading.get("responder_note") or ""
         if r.get("status") == "WELFARE_CHECK":
             note = note or f"No answer after {r.get('attempts', 0)} calls. Send a person."
-        line = f"{r.get('name', 'Unknown')} at {r.get('address', 'unknown address')}: {STATUS_WORDS.get(r.get('status'), r.get('status', '').lower())}."
+        words = STATUS_WORDS.get(r.get("status"), r.get("status", "").lower())
+        line = f"{r.get('name', 'Unknown')} at {r.get('address', 'unknown address')}: {words}."
+        note = _clean_note(note, words)
         if note:
-            line += f" {note.rstrip('.')}."
+            line += f" {note}"
         lines.append(line)
     return " ".join(lines)
 
@@ -154,15 +170,20 @@ def resident_status(name: str) -> str:
         return f"{len(matches)} residents match {name}: {names}. Which one?"
     r = matches[0]
     attempts = r.get("attempts", 0)
+    words = STATUS_WORDS.get(r.get("status"), str(r.get("status")).lower())
     parts = [
-        f"{r.get('name')}, {r.get('age')}, at {r.get('address')}, {STATUS_WORDS.get(r.get('status'), str(r.get('status')).lower())}.",
+        f"{r.get('name')}, {r.get('age')}, at {r.get('address')}, {words}.",
         f"{_n(attempts, 'call attempt', 'call attempts')} so far.",
     ]
     reading = r.get("reading") or {}
-    if reading.get("quote"):
-        parts.append(f'They said: "{reading["quote"]}"')
-    if reading.get("responder_note"):
-        parts.append(f"Note: {reading['responder_note'].rstrip('.')}.")
+    quote = _quote(reading)
+    if quote:
+        parts.append(f'They said: "{quote}"')
+    elif reading.get("engine") == "keypad":
+        parts.append("They answered with the keypad.")
+    note = _clean_note(reading.get("responder_note", ""), words)
+    if note:
+        parts.append(f"Note: {note}")
     family = r.get("family") or ""
     parts.append(f"{family.rstrip('.')}." if family else "Family hasn't been notified yet.")
     return " ".join(parts)
