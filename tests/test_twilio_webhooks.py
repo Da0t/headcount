@@ -189,7 +189,7 @@ def test_api_key_client_and_no_token_skips_validation():
 def test_placeholder_from_number_keeps_calls_off():
     s = load_settings(twilio_account_sid="AC123", twilio_api_key_sid="SK1", twilio_api_key_secret="x",
                       twilio_from_number="+1", public_base_url=BASE, phones_file="__none__.json")
-    assert s.twilio_ready  # config alone would say yes
+    # config.twilio_ready also rejects "+1" (Agent 1); either way the server must not build a client
     assert main._build_twilio(s) is None
     s2 = load_settings(twilio_account_sid="AC123", twilio_api_key_sid="SK1", twilio_api_key_secret="x",
                        twilio_from_number="+16195550100", public_base_url=BASE, phones_file="__none__.json")
