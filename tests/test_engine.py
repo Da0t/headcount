@@ -199,3 +199,78 @@ def test_snapshot_shape():
                 "reading", "family", "updated", "real_phone"]:
         assert key in row
     assert snap["done"] is False and snap["total"] == 10
+
+
+def test_late_callback_from_previous_campaign_is_stale():
+    """Copilot review finding: attempt numbers must not be reused after a reset."""
+    async def go():
+        e = Engine(fast(), [one()])
+        await e.start()
+        assert await wait_for(lambda: e.residents[1].status == Status.CALLING)
+        old_attempt = e.residents[1].attempts
+        await e.start()  # reset + new campaign
+        r = e.residents[1]
+        assert await wait_for(lambda: r.status == Status.CALLING)
+        assert r.attempts != old_attempt and r.calls == 1
+        assert e.answered(1, old_attempt) is False
+        say, keep = await e.respond(1, old_attempt, CallReading(answer=Answer.OUT))
+        assert keep is False and r.status == Status.CALLING
+        assert e.snapshot()["residents"][0]["attempts"] == 1
+        e.reset()
+    run(go())
+
+
+def test_welfare_check_counts_calls_not_tokens_after_reset():
+    async def go():
+        e = Engine(fast(), [one()])
+        await e.start()
+        assert await wait_for(lambda: e.residents[1].status == Status.WELFARE_CHECK)
+        await e.start()
+        r = e.residents[1]
+        assert await wait_for(lambda: r.status == Status.WELFARE_CHECK)
+        assert r.calls == 3 and r.attempts == 6
+        assert any("after 3 calls" in ev["msg"] for ev in e.events)
+        e.reset()
+    run(go())
+
+
+def test_autopilot_off_stops_scheduled_answers(monkeypatch):
+    monkeypatch.setattr(engine_mod.random, "uniform", lambda a, b: 0.05)
+
+    async def go():
+        residents = [r for r in load_residents(fast()) if r.id == 3]
+        e = Engine(fast(autopilot=True, ring_timeout=5), residents)
+        await e.start()
+        assert await wait_for(lambda: e.residents[3].status == Status.CALLING)
+        e.autopilot = False
+        await asyncio.sleep(0.3)
+        assert e.residents[3].status == Status.CALLING  # nobody answered for them
+        e.reset()
+    run(go())
+
+
+def test_family_text_finishing_after_reset_is_ignored():
+    import threading
+    gate = threading.Event()
+
+    class SlowTwilio:
+        def place_call(self, r, attempt):
+            return "CA1"
+
+        def send_sms(self, to, body):
+            gate.wait(2)
+            return "SM1"
+
+    async def go():
+        e = Engine(fast(), [one(phone="+16195550101", contact_phone="+16195550102")], twilio=SlowTwilio())
+        await e.start()
+        assert await wait_for(lambda: e.residents[1].status == Status.CALLING)
+        e.answered(1, e.residents[1].attempts)
+        task = asyncio.create_task(e.respond(1, e.residents[1].attempts, CallReading(answer=Answer.OUT, quote="out")))
+        await asyncio.sleep(0.05)
+        e.reset()
+        gate.set()
+        await task
+        assert e.residents[1].family_notified == ""
+        assert not any(ev["kind"] == "family" for ev in e.events)
+    run(go())

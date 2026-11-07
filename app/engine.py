@@ -44,6 +44,7 @@ class Engine:
         self.events: list[dict[str, Any]] = []
         self.started_at: Optional[float] = None
         self._tasks: dict[tuple[int, str], asyncio.Task] = {}
+        self._gen = 0  # bumps on reset; work that awaited across a reset must not write to the new campaign
 
     # ------------------------------------------------------------------ tasks
 
@@ -105,6 +106,7 @@ class Engine:
     # ------------------------------------------------------------------ campaign
 
     def reset(self) -> None:
+        self._gen += 1
         self._cancel_all()
         for r in self.residents.values():
             r.reset_runtime()
@@ -168,9 +170,9 @@ class Engine:
         self._cancel(rid, "ring")
         self._cancel(rid, "auto")
         max_attempts = self.settings.max_attempts
-        if r.attempts >= max_attempts:
+        if r.calls >= max_attempts:
             self._touch(r, Status.WELFARE_CHECK)
-            self.log(r, f"No answer after {r.attempts} calls. Welfare check: send a person to {r.address}.", "alert")
+            self.log(r, f"No answer after {r.calls} calls. Welfare check: send a person to {r.address}.", "alert")
             await self._text_family(r)
         else:
             self._touch(r, Status.RETRY_WAIT)
@@ -229,8 +231,8 @@ class Engine:
 
     async def _autopilot(self, rid: int, attempt: int, step) -> None:
         r = self.residents[rid]
-        if attempt != r.attempts:
-            return
+        if attempt != r.attempts or not self.autopilot:
+            return  # stale, or autopilot was switched off after this was scheduled
         if step == "decline":
             await self.no_answer(rid, attempt, reason="declined")
             return
@@ -240,7 +242,7 @@ class Engine:
             return
         for utterance in step:
             await asyncio.sleep(random.uniform(1.5, 3))
-            if attempt != r.attempts or r.status != Status.IN_CALL:
+            if attempt != r.attempts or r.status != Status.IN_CALL or not self.autopilot:
                 return
             reading = digits_reading(utterance) if utterance.strip().isdigit() else None
             if reading is None:
@@ -258,15 +260,22 @@ class Engine:
             return
         who = f"{r.contact_name} ({r.contact_relation})" if r.contact_relation else r.contact_name
         quote = r.reading.quote if r.reading else ""
-        body = scripts.family_text(r.status.value, r.first, quote=quote, n=r.attempts)
+        body = scripts.family_text(r.status.value, r.first, quote=quote, n=r.calls)
         if self.twilio is not None and self.settings.send_sms and r.contact_phone:
+            gen = self._gen
             try:
                 await asyncio.to_thread(self.twilio.send_sms, r.contact_phone, body)
+                ok, err = True, None
+            except Exception as exc:  # noqa: BLE001
+                ok, err = False, exc
+            if gen != self._gen:
+                return  # campaign was reset while the text was sending
+            if ok:
                 r.family_notified = f"Texted {who}"
                 self.log(r, f"Texted {who}.", "family")
-            except Exception as exc:  # noqa: BLE001
+            else:
                 r.family_notified = f"Text to {who} failed"
-                self.log(r, f"Text to {who} failed: {exc}", "error")
+                self.log(r, f"Text to {who} failed: {err}", "error")
         else:
             r.family_notified = f"Texted {who} (simulated)"
             self.log(r, f"Texted {who} (simulated): {body}", "family")
@@ -287,7 +296,7 @@ class Engine:
                 unaccounted += 1
             rows.append({
                 "id": r.id, "name": r.name, "first": r.first, "age": r.age, "address": r.address, "lang": r.lang,
-                "status": r.status.value, "attempts": r.attempts, "channel": r.channel, "score": s, "why": why,
+                "status": r.status.value, "attempts": r.calls, "channel": r.channel, "score": s, "why": why,
                 "reading": r.reading.model_dump(mode="json") if r.reading else None,
                 "family": r.family_notified, "updated": r.updated, "real_phone": bool(r.phone),
             })

@@ -87,7 +87,8 @@ class Resident:
     sim_script: list = field(default_factory=list)  # per attempt: "no_answer" | "decline" | ["utterance", ...]
     # runtime
     status: Status = Status.PENDING
-    attempts: int = 0
+    attempts: int = 0  # attempt TOKEN: keeps counting across resets so late webhooks from an old campaign are stale
+    attempt_base: int = 0  # value of attempts when this campaign started
     unclear_count: int = 0
     reading: Optional[CallReading] = None
     family_notified: str = ""
@@ -99,9 +100,14 @@ class Resident:
     def first(self) -> str:
         return self.name.split()[0] if self.name else ""
 
+    @property
+    def calls(self) -> int:
+        """Calls placed in the current campaign (what people see)."""
+        return self.attempts - self.attempt_base
+
     def reset_runtime(self) -> None:
         self.status = Status.PENDING
-        self.attempts = 0
+        self.attempt_base = self.attempts  # never reuse an attempt number after a reset
         self.unclear_count = 0
         self.reading = None
         self.family_notified = ""
