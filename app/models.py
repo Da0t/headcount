@@ -43,7 +43,8 @@ class CallReading(BaseModel):
             "OUT: they have already left or are safely away. "
             "NEEDS_RIDE: they want to leave but cannot on their own (no car, cannot walk, wheelchair, "
             "cannot get out of bed) and are not hurt. "
-            "NEEDS_MEDICAL: someone is hurt, fell, cannot breathe, or needs an ambulance. This beats NEEDS_RIDE. "
+            "NEEDS_MEDICAL: someone is hurt, fell, cannot breathe, or needs an ambulance right now. This beats NEEDS_RIDE. "
+            "Using oxygen or other medical equipment is NOT by itself NEEDS_MEDICAL. "
             "STAYING: they refuse to leave. "
             "UNCLEAR: anything else, or if you are not sure. Never guess."
         )

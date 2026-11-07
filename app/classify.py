@@ -22,6 +22,8 @@ Read what they said and fill in the JSON fields. Rules:
 - They may speak English or Spanish, and the text may be a noisy phone transcription.
 - NEEDS_MEDICAL beats NEEDS_RIDE: if anyone is hurt, fell, cannot breathe, or needs an ambulance, it is NEEDS_MEDICAL.
 - Cannot walk, uses a wheelchair, has no car, or cannot get out of bed, but nobody is hurt: NEEDS_RIDE.
+- Using oxygen, a CPAP, dialysis, or other equipment is NOT by itself NEEDS_MEDICAL. Record it in medical_equipment.
+  It is NEEDS_MEDICAL only if something is wrong right now (ran out of oxygen, cannot breathe, hurt, fell).
 - Refusing to leave is STAYING.
 - Already left, or safely somewhere else: OUT.
 - "quote" is their key words, verbatim, in their own language.
@@ -35,6 +37,9 @@ AUDIO_PROMPT = PROMPT.replace("What they said:", "Their words are in the attache
 # --------------------------------------------------------------------------- Gemini
 
 _client = None
+# Free-tier keys rate-limit bursts (429). A small cap keeps a 10-call campaign under the limit.
+_GEMINI_SLOTS = 3
+_gemini_sem: Optional[asyncio.Semaphore] = None
 _client_key = None
 
 
@@ -73,6 +78,36 @@ def _gemini_call(contents: list, model: str, key: str) -> CallReading:
     return reading
 
 
+def _slots() -> asyncio.Semaphore:
+    """One semaphore per event loop, so tests that use asyncio.run() each get a fresh one."""
+    global _gemini_sem
+    loop = asyncio.get_running_loop()
+    if _gemini_sem is None or getattr(_gemini_sem, "_hc_loop", None) is not loop:
+        _gemini_sem = asyncio.Semaphore(_GEMINI_SLOTS)
+        _gemini_sem._hc_loop = loop  # type: ignore[attr-defined]
+    return _gemini_sem
+
+
+async def _gemini_limited(contents: list, model: str, key: str) -> CallReading:
+    async with _slots():
+        return await asyncio.to_thread(_gemini_call, contents, model, key)
+
+
+_EQUIPMENT_EN = {"oxigeno": "oxygen", "o2": "oxygen", "dialisis": "dialysis", "silla de ruedas": "wheelchair",
+                 "andadera": "walker", "concentrador de oxigeno": "oxygen"}
+
+
+def _english_equipment(items: list[str]) -> list[str]:
+    """Gemini sometimes answers in the caller's language; priority.py matches English names like 'oxygen'."""
+    out: list[str] = []
+    for item in items or []:
+        key = unicodedata.normalize("NFKD", str(item)).encode("ascii", "ignore").decode().lower().strip()
+        name = _EQUIPMENT_EN.get(key, "oxygen" if "oxig" in key or "oxyg" in key else key)
+        if name and name not in out:
+            out.append(name)
+    return out
+
+
 def _short(exc: BaseException) -> str:
     msg = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
     name = type(exc).__name__
@@ -93,9 +128,10 @@ async def classify_text(text: str, model: str = "gemini-3.5-flash-lite", timeout
         r.engine = "keywords (no Gemini key)"
         return r
     try:
-        reading = await asyncio.wait_for(asyncio.to_thread(_gemini_call, [PROMPT, text], model, key), timeout)
+        reading = await asyncio.wait_for(_gemini_limited([PROMPT, text], model, key), timeout)
         if not reading.quote:
             reading.quote = text
+        reading.medical_equipment = _english_equipment(reading.medical_equipment)
         reading.engine = f"Gemini ({model})"
         return reading
     except asyncio.TimeoutError:
@@ -120,7 +156,8 @@ async def classify_audio(audio_bytes: bytes, mime: str = "audio/webm", model: st
         from google.genai import types
 
         part = types.Part.from_bytes(data=audio_bytes, mime_type=mime or "audio/webm")
-        reading = await asyncio.wait_for(asyncio.to_thread(_gemini_call, [AUDIO_PROMPT, part], model, key), timeout)
+        reading = await asyncio.wait_for(_gemini_limited([AUDIO_PROMPT, part], model, key), timeout)
+        reading.medical_equipment = _english_equipment(reading.medical_equipment)
         reading.engine = f"Gemini ({model}, audio)"
         return reading
     except asyncio.TimeoutError:

@@ -70,3 +70,14 @@ def test_gemini_timeout_falls_back(monkeypatch):
     monkeypatch.setattr(classify, "_gemini_call", slow)
     r = asyncio.run(classify_text("we're out", timeout=0.05, api_key="fake"))
     assert r.answer == Answer.OUT and "timed out" in r.engine
+
+
+def test_gemini_equipment_normalized_to_english(monkeypatch):
+    from app.models import CallReading
+
+    def fake(*a, **k):
+        return CallReading(answer=Answer.NEEDS_RIDE, medical_equipment=["Oxígeno", "diálisis", "cpap"])
+    monkeypatch.setattr(classify, "_gemini_call", fake)
+    r = asyncio.run(classify_text("No tengo carro y uso oxígeno", api_key="fake"))
+    assert r.medical_equipment == ["oxygen", "dialysis", "cpap"]
+    assert r.engine.startswith("Gemini")
