@@ -1,0 +1,7 @@
+.env
+residents_phones.json
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store
