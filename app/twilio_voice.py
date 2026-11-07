@@ -75,6 +75,48 @@ def prompt_twiml(r: Resident, attempt: int, n: int, base: str) -> str:
     return str(resp)
 
 
+# Structured inbound call (someone calls the Headcount number). Demo line: never dispatches real responders.
+INBOUND_STEPS = {
+    1: {
+        "en": "Headcount emergency line. This is a demo, if this is a real emergency hang up and call 911. "
+              "Are you safe right now, or do you need help? You can say it in your own words, "
+              "or press 1 if you are safe, 2 if you need a ride, 3 for medical help.",
+        "es": "Línea de emergencia de Headcount. Esto es una demostración; si es una emergencia real, cuelgue y llame "
+              "al 911. ¿Está a salvo ahora mismo o necesita ayuda? Puede decirlo con sus propias palabras, "
+              "u oprimir 1 si está a salvo, 2 si necesita transporte, 3 si necesita ayuda médica.",
+    },
+    2: {"en": "Is anyone with you, and do you have pets?",
+        "es": "¿Hay alguien con usted, y tiene mascotas?"},
+    3: {"en": "What is your address or the nearest cross street?",
+        "es": "¿Cuál es su dirección o la esquina más cercana?"},
+}
+INBOUND_STEP_LABEL = {1: "are you safe or do you need help", 2: "anyone with you, pets", 3: "address or cross street"}
+ROUTED = {
+    "en": " A responder is being routed to you now. This is a demo; no real responders are dispatched.",
+    "es": " Un equipo de rescate va en camino. Esto es una demostración; no se envía a ningún equipo real.",
+}
+
+
+def inbound_twiml(r: Resident, attempt: int, step: int, base: str, text: str | None = None) -> str:
+    """One step of the structured inbound call: speak, then listen for speech (or a digit on step 1)."""
+    lang = scripts.lang(r.lang)
+    code = scripts.LANG_CODE[lang]
+    resp = VoiceResponse()
+    gather = Gather(
+        input="speech dtmf",
+        num_digits=1,
+        timeout=7,
+        speech_timeout="auto",
+        language=code,
+        action=f"{base}/twilio/inbound/{r.id}?attempt={attempt}&step={step}",
+        method="POST",
+        action_on_empty_result=True,
+    )
+    gather.say(text or INBOUND_STEPS[step][lang], language=code)
+    resp.append(gather)
+    return str(resp)
+
+
 def say_twiml(text: str, lang: str) -> str:
     """Say one thing, then hang up."""
     resp = VoiceResponse()

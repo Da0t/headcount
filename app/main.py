@@ -22,7 +22,7 @@ from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
 from app.seed import ZONE, ZONE_CENTER, load_residents
-from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok,
+from app.twilio_voice import (INBOUND_STEP_LABEL, ROUTED, TwilioClient, inbound_twiml, message_twiml, prompt_twiml, say_twiml, signature_ok,
                               text_ask_again)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -144,7 +144,7 @@ async def call_resident(rid: int, request: Request):
     return {"ok": True, "real_phone": real}
 
 
-BASE = {"name": "Fire Station (demo)", "lat": 32.8252, "lng": -117.0972}
+BASE = {"name": "Station 0 (demo)", "lat": 32.8252, "lng": -117.0972}
 
 
 def _zone_polygon(points: list[tuple[float, float]], pad: float = 0.004, n: int = 32) -> dict:
@@ -346,6 +346,82 @@ async def twilio_gather(rid: int, request: Request, attempt: int = 1, n: int = 1
     say, keep = await engine.respond(rid, attempt, reading)
     if keep:
         return _twiml(prompt_twiml(r, attempt, 2, _base()))
+    return _twiml(say_twiml(say, lang))
+
+
+# ---------------------------------------------------------------------- inbound structured call
+# Someone calls the Headcount number. Three short steps, then the same engine.respond as every other answer.
+# Demo only: the "routing" is the board, no real responders or hospitals are ever contacted.
+
+inbound_notes: dict[tuple[int, int], dict] = {}  # (rid, attempt) -> {"1": text, "2": text, "3": text, "digit": "1"}
+
+
+@app.post("/twilio/incoming")
+async def twilio_incoming(request: Request):
+    """The Twilio number's "A call comes in" webhook."""
+    params = await _twilio_form(request)
+    caller = params.get("From", "")
+    r = engine.find_by_phone(caller)
+    if r is None:
+        r = engine.add_caller(caller, *ZONE_CENTER)
+    attempt = engine.begin_inbound(r.id)
+    r.call_sid = params.get("CallSid", "")
+    inbound_notes[(r.id, attempt)] = {}
+    engine.log(r, f"Inbound step 1: {INBOUND_STEP_LABEL[1]}", "info")
+    return _twiml(inbound_twiml(r, attempt, 1, _base()))
+
+
+@app.post("/twilio/inbound/{rid}")
+async def twilio_inbound_step(rid: int, request: Request, attempt: int = 1, step: int = 1, n: int = 1):
+    params = await _twilio_form(request)
+    r = engine.residents.get(rid)
+    if r is None:
+        return _twiml(say_twiml(scripts.CALLBACK["en"], "en"))
+    lang = scripts.lang(r.lang)
+    notes = inbound_notes.setdefault((rid, attempt), {})
+    digits = params.get("Digits", "").strip()
+    speech = params.get("SpeechResult", "").strip()
+
+    if step == 1 and not digits and not speech and n < 2:
+        return _twiml(inbound_twiml(r, attempt, 1, _base(), text=scripts.ASK_AGAIN[lang]))
+    if step == 1 and digits:
+        notes["digit"] = digits[:1]
+        engine.log(r, f"Pressed {digits[:1]}", "speech")
+    elif speech:
+        notes[str(step)] = speech
+        engine.log(r, f"Said (step {step}): “{speech}”", "speech")
+
+    if step < 3:
+        engine.log(r, f"Inbound step {step + 1}: {INBOUND_STEP_LABEL[step + 1]}", "info")
+        return _twiml(inbound_twiml(r, attempt, step + 1, _base()))
+
+    # all three steps heard: understand them together
+    text = " ".join(notes.get(k, "") for k in ("1", "2", "3")).strip()
+    keypad = digits_reading(notes["digit"]) if notes.get("digit") else None
+    reading = None
+    if text:
+        reading = await classify_text(text, settings.gemini_model, settings.gemini_timeout,
+                                      api_key=settings.gemini_api_key)
+    if keypad is not None:
+        if reading is None:
+            reading = keypad
+        else:
+            reading.answer = keypad.answer  # the key they pressed decides the answer; speech adds the details
+            reading.engine = f"keypad + {reading.engine}"
+    if reading is None:
+        reading = CallReading(answer=Answer.UNCLEAR, engine="nothing heard")
+    if notes.get("3"):
+        reading.where_they_are = notes["3"]
+
+    say, keep = await engine.respond(rid, attempt, reading)
+    if keep:  # unclear: start the questions over once
+        inbound_notes[(rid, attempt)] = {}
+        engine.log(r, f"Inbound step 1 (again): {INBOUND_STEP_LABEL[1]}", "info")
+        return _twiml(inbound_twiml(r, attempt, 1, _base(), text=scripts.ASK_AGAIN[lang]))
+    inbound_notes.pop((rid, attempt), None)
+    if reading.answer in (Answer.NEEDS_RIDE, Answer.NEEDS_MEDICAL):
+        say += ROUTED[lang]
+        engine.log(r, "Routing a responder (simulated dispatch, demo).", "alert")
     return _twiml(say_twiml(say, lang))
 
 
