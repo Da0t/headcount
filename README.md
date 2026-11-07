@@ -15,6 +15,7 @@ Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and n
 - **Understands the answer** in English or Spanish, in their own words ("mi esposo no puede caminar") or with the keypad: 1 = I'm out, 2 = I need a ride, 3 = I need medical help.
 - **Retries three times.** If it still can't reach someone, it never guesses: it flags a **welfare check** and sends a person to the door. If someone answers but can't be understood twice, a human calls them back.
 - **Live dispatch board** for responders, ranked by priority (age, oxygen, mobility, bedridden, lives alone), with one English line a responder can act on.
+- **Accessible evacuation help:** for each resident, plain rules recommend transport (ambulance, wheelchair van, large-animal trailer, or a standard car) and a fictional demo shelter that fits their needs (wheelchair access, oxygen backup power, medical staff, pets, large animals).
 - **Family texts** the moment their person is accounted for.
 - **Voice for responders** through VoiceOS: ask out loud, "who still needs help?"
 
@@ -53,7 +54,15 @@ PENDING ─► CALLING ─► IN_CALL ─► OUT | NEEDS_RIDE | NEEDS_MEDICAL | 
 | not yet called | 35 | | | |
 | OUT | 0 | | | |
 
-The multiplier starts at 1.0. For example, Walter (87, bedridden, lives alone, never reached) scores 100 × 2.1 = 210 and goes to the top of the board.
+The multiplier starts at 1.0. For example, Walter (87, bedridden, lives alone, never reached) scores 100 × 2.1 = 210, near the top of the board.
+
+**Accessible evacuation help** (`app/accessibility.py`) is plain rules too. Each resident in `/api/state` carries an `assist` plan: `{"transport", "shelter", "shelter_why", "needs"}`.
+
+- **Transport** is the first that applies: `ambulance` (needs medical help), `wheelchair van` (wheelchair, walker, or bedridden), `large-animal trailer` (horses or livestock), `standard car` (needs a ride), or none (already out, or no known need). A welfare-check resident gets a plan from their profile, so the person sent to the door brings the right vehicle.
+- **Shelter** is the demo shelter that covers the most of what they need. `shelter_why` lists what it covers, and says so when no demo shelter covers something (for example pets).
+- **Needs** are short responder notes, such as "oxygen: bring portable tanks, shelter needs backup power" or "hard of hearing: use text or face-to-face, not a loudspeaker".
+
+The four shelters are **fictional** and marked as such: Alpine High School gym (demo), Alpine Community Center (demo), Viejas Valley Medical Shelter (demo), and Harbison Canyon Fairgrounds (demo). `GET /api/accessibility` lists them with their capabilities (`wheelchair_accessible`, `oxygen_power`, `medical_staff`, `pets_allowed`, `large_animals`, and `"fictional": true`).
 
 **Family texts** go out the moment someone answers, or when a welfare check is called ("we could not reach Walter after 3 calls, a responder is being sent"). Residents without a contact are skipped.
 
@@ -112,13 +121,14 @@ It lists which settings are set (never their values) and checks the Twilio crede
    cloudflared tunnel --url http://localhost:8000     # or: ngrok http 8000
    ```
    Put the https URL in `PUBLIC_BASE_URL` **exactly**, with no trailing slash. The URL changes every time the tunnel restarts: update `.env` and restart uvicorn each time. If webhooks return 403, this is almost always why (or set `TWILIO_VALIDATE=0` while debugging).
-4. **Map residents to real phones** in `residents_phones.json` (gitignored; copy `residents_phones.example.json`):
+4. **For text check-ins**, set the Twilio number's Messaging webhook (HTTP POST) to your `PUBLIC_BASE_URL` followed by `/twilio/sms`. Headcount matches the reply to the resident by the sender's number. (`/twilio/sms/{rid}?attempt=N` also works for a single resident.) Both reply with a short confirmation text.
+5. **Map residents to real phones** in `residents_phones.json` (gitignored; copy `residents_phones.example.json`):
    ```json
    {"1": {"phone": "+16195550101", "contact_phone": "+16195550102"}}
    ```
    Mapped residents are called for real and their contact gets real texts. Everyone else stays simulated. Maria (resident 1, Spanish) makes the best real call.
-5. `uvicorn app.main:app --port 8000`, open the board, and press **Start**. The phones ring within a few seconds.
-6. **If Twilio misbehaves on stage:** delete `residents_phones.json` and restart. Everything still runs simulated.
+6. `uvicorn app.main:app --port 8000`, open the board, and press **Start**. The phones ring within a few seconds.
+7. **If Twilio misbehaves on stage:** delete `residents_phones.json` and restart. Everything still runs simulated.
 
 ## Simulator and mock mode
 
@@ -135,6 +145,7 @@ It lists which settings are set (never their values) and checks the Twilio crede
 | `evacuation_status` | "What's the evacuation status?" |
 | `system_check` | "Is Headcount ready?" (server up, Gemini on or off, calls real or simulated) |
 | `who_still_needs_help` | "Who still needs help?" |
+| `who_needs_accessible_transport` | "Who needs a wheelchair van?" (wheelchair van and ambulance residents, with their shelter) |
 | `resident_status` | "What's Walter's status?" |
 | `start_evacuation_calls` | "Start the evacuation calls." (VoiceOS asks you to confirm, because this places real calls) |
 
@@ -154,7 +165,7 @@ python3 -c "import mcp_server as m; print(m.evacuation_status())"
 
 ## The demo zone
 
-`app/seed.py` holds 10 fictional residents in "Alpine (demo zone)". On autopilot, their scripted answers cover every path:
+`app/seed.py` holds 20 fictional residents in "Alpine (demo zone)". On autopilot, their scripted answers cover every path. The first ten:
 
 | Resident | What happens | Ends as |
 |---|---|---|
@@ -169,7 +180,7 @@ python3 -c "import mcp_server as m; print(m.evacuation_status())"
 | Luis Herrera, 68 (Spanish) | misses the first call, then "Ya salimos todos, estamos bien." | OUT |
 | Edna Morales, 93 (oxygen, bedridden) | misses the first call, then "I can't get out of bed by myself." | NEEDS_RIDE |
 
-A full simulated run finishes in under a minute with the faster stage timers below: 4 OUT, 3 NEEDS_RIDE, 1 NEEDS_MEDICAL, 1 STAYING, 1 WELFARE_CHECK.
+Residents 11 to 20 add more of every path, including a second text check-in: Orion Bellweather, 88, who is deaf and uses a walker, replies "2" by text and gets a wheelchair van. A full simulated run ends with 7 OUT, 6 NEEDS_RIDE, 2 NEEDS_MEDICAL, 2 STAYING, 2 WELFARE_CHECK, and 1 NEEDS_CALLBACK.
 
 ## Configuration
 
@@ -195,7 +206,7 @@ Free-tier Gemini keys can return rate-limit errors (429) when many calls land at
 pytest -q
 ```
 
-85 tests, all passing with no API keys and without making any Gemini or Twilio calls. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
+111 tests, all passing with no API keys and without making any Gemini or Twilio calls. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages plus harder wording (negations, mixed signals, curly apostrophes, uppercase), negated injuries such as "No me caí" or "I'm not hurt" not being read as medical, Gemini errors and timeouts falling back to keywords, the Twilio webhooks, simulator routes, and signature validation, transport and shelter rules, text check-ins and the SMS reply route, and full simulated campaigns through the HTTP API (including Start being safe to press twice, and Reset).
 
 ## Project layout
 
@@ -205,8 +216,9 @@ app/models.py        Status, Answer, CallReading, Resident
 app/scripts.py       English and Spanish call scripts and family texts
 app/classify.py      Gemini classifier, keyword and keypad fallback
 app/priority.py      priority score and the reasons behind it
+app/accessibility.py transport and fictional demo shelter recommendations
 app/engine.py        call state machine: retries, welfare checks, texts
-app/seed.py          the 10 demo residents, plus residents_phones.json mapping
+app/seed.py          the 20 demo residents, plus residents_phones.json mapping
 app/main.py          FastAPI server: board, simulator, and Twilio webhooks
 app/twilio_voice.py  outbound calls, TwiML, SMS, signature validation
 app/static/          board.html (dispatch board), phone.html (phone simulator), headcount-api.js (shared API and mock layer)

@@ -13,23 +13,24 @@ Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop o
 ## What it does
 
 - **Calls every resident in the zone**, staggered, with a real phone call through Twilio, or a built-in phone simulator when Twilio is off.
-- **Text check-in for deaf and hard-of-hearing residents.** Instead of a call, they get a text asking them to reply 1, 2, 3, or in their own words, in English or Spanish. Replies go through the same understanding and the same rules, including three tries and then a welfare check. In the demo, George (hard of hearing) is checked in by text and replies "1".
+- **Text check-in for deaf and hard-of-hearing residents.** Instead of a call, they get a text asking them to reply 1, 2, 3, or in their own words, in English or Spanish. Replies go through the same understanding and the same rules, including three tries and then a welfare check. In the demo, George (hard of hearing) replies "1", and Orion (deaf, uses a walker) replies "2" and gets a wheelchair van.
 - **Understands the answer** in their own words, in English or Spanish ("No tengo carro y uso oxígeno"), or from the keypad (1 = I'm out, 2 = I need a ride, 3 = I need medical help).
 - **Never guesses.** A missed call is retried. After three missed calls, the resident is flagged for a **welfare check** and a person is sent to the door. Two unclear answers mean a human calls them back.
 - **Live dispatch board** for responders, ranked by a priority score that shows its reasons (for example "age 87, bedridden, lives alone"), with one English line a responder can act on, such as "No car, uses oxygen. Needs a ride."
+- **Accessible evacuation help:** plain rules recommend transport for each resident (ambulance, wheelchair van, large-animal trailer, or a standard car) and the fictional demo shelter that fits their needs (wheelchair access, oxygen backup power, medical staff, pets, large animals), plus short notes for responders, such as "oxygen: bring portable tanks".
 - **Family texts** the moment their person is accounted for, or when a welfare check is called.
 - **Voice for responders** through VoiceOS: an MCP server lets a responder ask out loud "who still needs help?" or "what's Walter's status?" and hear a spoken answer. The tool that starts calls is marked as placing real phone calls, so VoiceOS asks for confirmation before running it.
-- **Demo-safe:** a 10-resident fictional demo zone, a phone simulator (`/phone`), a no-backend mock mode (`/?mock=1`), and a preflight check that never places calls.
+- **Demo-safe:** a 20-resident fictional demo zone, a phone simulator (`/phone`), a no-backend mock mode (`/?mock=1`), and a preflight check that never places calls.
 
 ## How we built it
 
 - **Backend:** Python, FastAPI and Uvicorn. One call state machine (`app/engine.py`) tags every event with its call attempt, so a late webhook from an old call can never overwrite a newer answer.
 - **Speech understanding:** the Google Gemini API (`google-genai`) returns a structured `CallReading` (answer, people with them, mobility, medical equipment, pets, their words, and a responder note) from English or Spanish text, plus audio from the simulator mic. If Gemini errors, times out or is rate-limited, the classifier falls back to tested English and Spanish keyword rules. Keypad input skips classification entirely.
-- **Decisions in plain code:** retries, welfare checks, priority scores (`app/priority.py`, a weight times a vulnerability multiplier) and family texts are ordinary Python with tests. Gemini never decides who gets help.
+- **Decisions in plain code:** retries, welfare checks, priority scores (`app/priority.py`, a weight times a vulnerability multiplier), transport and shelter recommendations (`app/accessibility.py`) and family texts are ordinary Python with tests. Gemini never decides who gets help.
 - **Phone calls:** Twilio Programmable Voice (speech and keypad Gather, status callbacks, signature validation) and SMS.
 - **Frontend:** plain HTML, CSS and JavaScript (no build step) for the dispatch board and phone simulator.
 - **Voice for responders:** an MCP server (`mcp_server.py`, Python MCP SDK) that VoiceOS launches over stdio. It reads the same HTTP API as the board.
-- **Testing:** pytest, with more than 80 tests that pass with no API keys. They cover the state machine, the priority formula, the classifier in both languages, the Twilio webhooks and full simulated campaigns.
+- **Testing:** pytest, with more than 100 tests that pass with no API keys. They cover the state machine, the priority formula, the classifier in both languages, the transport rules, the Twilio webhooks and full simulated campaigns.
 - **GitHub Copilot** CLI, brought in for the second half of the build, for explanations, extra tests, code review and docstrings, logged in [COPILOT.md](COPILOT.md).
 - **Teamwork:** four parallel workstreams (engine and Gemini, Twilio and API, frontend, VoiceOS and docs) built against one written interface contract (`docs/briefs/`).
 
@@ -70,7 +71,7 @@ Evacuation alerts broadcast one way. A phone buzzes and nobody closes the loop o
 **Best Use of GitHub Copilot.** We brought in GitHub Copilot CLI for the second half of the build, after the core was working, for explanation, testing, code review and docs, and logged every real interaction in [COPILOT.md](COPILOT.md):
 - **Learn:** it traced how a stale Twilio webhook is kept from overwriting a newer answer, with line references.
 - **Test:** it wrote an extra classifier suite (`tests/test_classify_extra.py`) that found a real bug: negated injuries like "No me caí" were read as medical emergencies.
-- **Solve:** after we fixed that bug, it promoted those xfails to regression tests. A Copilot code review of the engine found a stale-attempt collision after reset and two reset and autopilot races, which we then fixed, with new engine tests (commit `1054de6`).
+- **Solve:** after we fixed that bug, it promoted those xfails to regression tests. A Copilot code review of the engine found a stale-attempt collision after reset and two reset and autopilot races, which we then fixed, with new engine tests (commit `1054de6`). It also expanded the fictional demo zone from 10 to 20 residents covering every outcome and updated the campaign tests, while keeping the original 10 unchanged.
 - **Document:** it wrote the module and `score()` docstrings in `app/priority.py` that explain the priority formula, with a worked example (Walter scores 100 × 2.1 = 210) (commit `94673f5`).
 
 Copilot's own commits carry its co-author trailer, so its contributions can be checked in the git history.
