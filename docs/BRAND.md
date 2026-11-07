@@ -13,9 +13,9 @@ The mark is drawn by hand from simple geometry on a 64-unit grid: a white house 
 |---|---|
 | `logo.svg` | Tile mark and wordmark, full color, on light backgrounds |
 | `logo-reversed.svg` | Tile mark and wordmark on dark backgrounds (white "Head", lighter orange "count") |
-| `logo-mono.svg` | One color, follows `currentColor` (still the earlier outlined-house drawing, no tile) |
+| `logo-mono.svg` | Tile mark and wordmark in one color, follows `currentColor` (the house is knocked out of the tile) |
 | `logo-mark.svg` | Tile mark only, square, full color |
-| `logo-mark-mono.svg` | Mark only, one color, follows `currentColor` (outlined house, no tile) |
+| `logo-mark-mono.svg` | Tile mark only, one color, follows `currentColor` (the house is knocked out of the tile) |
 | `favicon.svg` | Browser tab icon, the same tile mark, built for 16 to 32px |
 
 The wordmark is live `<text>` (Inter, then the system sans): "Head" in ink and "count" in orange.
