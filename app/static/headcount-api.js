@@ -191,9 +191,13 @@
     };
     const TEXT_PROMPT = {
       en: "Headcount, the evacuation check for your neighborhood: there is an evacuation order for your area, {first}. Reply 1 if you are out, 2 if you need a ride, 3 if you need medical help, or reply in your own words. If anyone is in danger right now, text or call 911.",
-      es: "Headcount, la verificación de evacuación de su vecindario: hay una orden de evacuación para su zona, {first}. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica, o responda con sus propias palabras. Si alguien está en peligro ahora mismo, envíe un texto o llame al 911.",
+      es: "Headcount, la verificación de evacuación de su vecindario: hay una orden de evacuación para su zona, {first}. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica, o responda con sus palabras. Si alguien está en peligro ahora mismo, envíe un texto o llame al 911.",
     };
     const promptFor = (r) => ((r.contact_mode === "text" ? TEXT_PROMPT : PROMPT)[r.lang === "es" ? "es" : "en"]).replace("{first}", r.name.split(" ")[0]);
+    const TEXT_ASK_AGAIN = {
+      en: "Headcount: sorry, we didn't understand. Reply 1 if you are out, 2 if you need a ride, 3 for medical help.",
+      es: "Headcount: perdón, no entendimos. Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica.",
+    };
     const ASK_AGAIN = {
       en: "Sorry, I didn't catch that. Are you out, or do you need help? Press 1 if you are out, 2 for a ride, 3 for medical help.",
       es: "Perdón, no le entendí. ¿Ya salió o necesita ayuda? Oprima 1 si ya salió, 2 para transporte, 3 para ayuda médica.",
@@ -351,7 +355,7 @@
           return [CALLBACK[lang], false];
         }
         r.updated = now();
-        return [ASK_AGAIN[lang], true];
+        return [(r.contact_mode === "text" ? TEXT_ASK_AGAIN : ASK_AGAIN)[lang], true];
       }
       r.reading = reading; touch(r, reading.answer);
       log(r, (EVLABEL[reading.answer] + ". " + (reading.responder_note || reading.quote)).trim(), EVKIND[reading.answer]);
