@@ -124,6 +124,20 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .idle .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 1.6s infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
 
+.callhc {
+  margin-top: 22px; border: 0; border-radius: 999px; padding: 13px 22px; font-weight: 700; font-size: 15px;
+  background: var(--green); color: #fff; display: inline-flex; align-items: center; gap: 8px;
+}
+.callhc svg { width: 18px; height: 18px; fill: #fff; }
+.callhc:hover { filter: brightness(.95); }
+.idle .sub-hint { margin-top: 8px; font-size: 12.5px; color: var(--muted); max-width: 250px; }
+.outgoing { align-items: center; justify-content: space-between; padding: 48px 24px 34px; text-align: center;
+  background: linear-gradient(180deg, #fff 0%, #eef8f2 100%); }
+.outgoing .big-av { width: 96px; height: 96px; font-size: 34px; margin: 0 auto 16px; --av: #c2410c; }
+.outgoing .who { font-size: 24px; font-weight: 600; }
+.outgoing .what { color: var(--text-2); margin-top: 4px; }
+.outgoing .dots::after { content: "…"; animation: pulse 1.2s infinite; }
+
 /* incoming */
 .incoming { align-items: center; justify-content: space-between; padding: 40px 24px 34px; text-align: center;
   background: linear-gradient(180deg, #fff 0%, #fff6f0 100%); }
@@ -275,6 +289,20 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
             <div class="clock" id="idle-clock">9:41</div>
             <div class="date" id="idle-date"></div>
             <div class="msg" id="idle-msg"><span class="dot" aria-hidden="true"></span>Waiting for Headcount to call or text. Press Start on the board.</div>
+            <button class="callhc" id="call-hc" type="button" aria-label="Call the Headcount emergency line (demo)"></button>
+            <div class="sub-hint">Or play someone calling in for help. Demo only, nobody real is dispatched.</div>
+          </section>
+
+          <!-- outgoing call to Headcount (simulated inbound) -->
+          <section class="view outgoing" id="v-outgoing" aria-labelledby="out-who">
+            <div>
+              <div class="avatar big-av" aria-hidden="true">H</div>
+              <div class="who" id="out-who">Headcount</div>
+              <div class="what"><span id="out-what">Calling Headcount emergency line</span><span class="dots" aria-hidden="true"></span></div>
+            </div>
+            <div class="actions">
+              <div class="act"><button class="round decline" id="out-end" type="button" aria-label="Cancel call"></button>Cancel</div>
+            </div>
           </section>
 
           <!-- incoming voice call -->
@@ -361,6 +389,8 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
   $("c-mic").innerHTML = ICON.mic;
   $("c-send").innerHTML = ICON.send;
   $("c-speaker").innerHTML = ICON.speaker;
+  $("out-end").innerHTML = ICON.phone;
+  $("call-hc").innerHTML = ICON.phone + "Call Headcount";
 
   if (MOCK) {
     $("mode").textContent = "MOCK"; $("mode").classList.add("mock");
@@ -392,6 +422,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
   let speakerOn = true;
   function speak(text, lang) {
     if (!speakerOn || !text || !("speechSynthesis" in window)) return;
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
@@ -408,7 +439,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
 
   function show(v) {
     view = v;
-    ["idle", "incoming", "convo"].forEach((n) => $("v-" + n).classList.toggle("show", n === v));
+    ["idle", "outgoing", "incoming", "convo"].forEach((n) => $("v-" + n).classList.toggle("show", n === v));
   }
 
   // ------------------------------------------------------------------ queue (beside the phone)
@@ -476,7 +507,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
       if (view === "incoming" && selected && !here(selected) && !busy) {
         showErr(selected.name + " stopped ringing (missed call). Headcount will try again.");
         toIdle();
-      } else if (view === "convo" && active && !finished && !here(active) && !busy) {
+      } else if (view === "convo" && active && !active.inbound && !finished && !here(active) && !busy) {
         endConvo(null, "The " + (isText(active) ? "check-in" : "call") + " timed out. Headcount will try again.");
       }
       if (view === "idle") {
@@ -557,6 +588,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
     if (text) { $("c-av").textContent = "H"; $("c-av").style.setProperty("--av", "#c2410c"); }
     $("convo").innerHTML = "";
     $("callbar").hidden = text;
+    $("c-mic").parentElement.hidden = false;
     $("c-send").classList.toggle("voice", !text);
     $("c-text").placeholder = text ? "Text message" : "Type an answer, English or Spanish";
     $("c-text-label").textContent = text ? "Reply by text" : "Your answer";
@@ -605,6 +637,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
   });
 
   async function submit(input, shownText) {
+    if (active && active.inbound) return inboundSubmit(input, shownText);
     if (!active || busy || finished) return;
     busy = true; setInputs(false); showErr("");
     if (shownText) bubble(shownText, "out");
@@ -646,6 +679,7 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
     if (!speakerOn) stopSpeaking();
   });
   $("c-hang").addEventListener("click", async () => {
+    if (active && active.inbound && !finished) { stopSpeaking(); endConvo(null, "You hung up. A person from Headcount will call you back."); return; }
     if (!active || busy || finished) return;
     const c = active;
     busy = true; stopSpeaking();
@@ -705,6 +739,104 @@ footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; text-align: c
     $("c-mic").innerHTML = ICON.stop;
     $("mic-label").textContent = "Listening… tap to send";
   });
+
+  // ------------------------------------------------------------------ simulated inbound: the resident calls Headcount
+  // Live: POST /api/sim/incoming then /api/sim/inbound/{rid} (same steps and logs as a real Twilio call).
+  // Mock: a local copy of the three questions, so the demo works with no server.
+  const INBOUND_Q = {
+    en: ["Headcount emergency line. This is a demo, if this is a real emergency hang up and call 911. Are you safe right now, or do you need help? You can say it in your own words, or press 1 if you are safe, 2 if you need a ride, 3 for medical help.",
+      "Is anyone with you, and do you have pets?", "What is your address or the nearest cross street?"],
+  };
+  const MOCK_DONE = {
+    OUT: "Thank you. I've marked you as safely out. We'll let your family know. Stay safe.",
+    NEEDS_RIDE: "Thank you. I've marked that you need a ride, and a responder will come to you. If anyone is in danger right now, hang up and call 911. A responder is being routed to you now. This is a demo; no real responders are dispatched.",
+    NEEDS_MEDICAL: "Thank you. I've marked that you need medical help, and responders are being told right now. If anyone is in danger right now, hang up and call 911. A responder is being routed to you now. This is a demo; no real responders are dispatched.",
+    STAYING: "I understand you are staying. I've let responders know. If you change your mind, please leave as soon as you can.",
+    UNCLEAR: "Thank you. A person from our team will call you back shortly. If you are in danger, call 911.",
+  };
+  let mockNotes = [];
+  function mockRead(all) {
+    const t = all.join(" ").toLowerCase(), d = all[0] && /^[123]$/.test(all[0].trim()) ? all[0].trim() : "";
+    if (d) return { 1: "OUT", 2: "NEEDS_RIDE", 3: "NEEDS_MEDICAL" }[d];
+    if (/fell|hurt|injur|breathe|ambulance|me ca[ií]|herid/.test(t)) return "NEEDS_MEDICAL";
+    if (/ride|no car|can'?t drive|wheelchair|can'?t walk|help|transporte|ayuda/.test(t)) return "NEEDS_RIDE";
+    if (/not leaving|staying|me quedo/.test(t)) return "STAYING";
+    if (/\b(out|left|safe)\b|sal[ií]|a salvo/.test(t)) return "OUT";
+    return "UNCLEAR";
+  }
+  async function postJSON(path, form) {
+    const res = await fetch(path, { method: "POST", body: form || undefined, headers: { Accept: "application/json" } });
+    let data = null; try { data = await res.json(); } catch (e) { /* ignore */ }
+    if (!res.ok) throw new HeadcountAPI.ApiError(res.status, (data && data.detail) || res.statusText);
+    return data;
+  }
+
+  $("call-hc").addEventListener("click", async () => {
+    if (busy || active) return;
+    showErr(""); busy = true;
+    $("out-what").textContent = "Calling Headcount emergency line";
+    show("outgoing"); $("out-end").focus({ preventScroll: true });
+    let cancelled = false;
+    $("out-end").onclick = () => { cancelled = true; toIdle(); };
+    try {
+      const [start] = await Promise.all([
+        MOCK ? Promise.resolve({ rid: 0, name: "You (simulated caller)", lang: "en", attempt: 1, step: 1, say: INBOUND_Q.en[0] })
+             : postJSON("/api/sim/incoming"),
+        new Promise((res) => setTimeout(res, 1400)),   // a moment of ringing
+      ]);
+      if (cancelled) return;
+      mockNotes = [];
+      const c = { inbound: true, id: start.rid, attempt: start.attempt, step: 1, n: 1, name: start.name,
+        lang: start.lang || "en", contact_mode: "voice" };
+      openConvo(c, start.say, false);
+      $("c-name").textContent = "Headcount emergency line";
+      $("c-av").textContent = "H"; $("c-av").style.setProperty("--av", "#c2410c");
+      $("c-status").textContent = "Connected · demo · question 1 of 3";
+      $("c-mic").parentElement.hidden = true;   // the simulated line takes typed or keypad answers
+    } catch (e) {
+      showErr("Could not reach the Headcount line: " + e.message);
+      toIdle();
+    } finally { busy = false; }
+  });
+
+  async function inboundSubmit(input, shownText) {
+    const c = active;
+    if (!c || busy || finished) return;
+    busy = true; setInputs(false); showErr("");
+    if (shownText) bubble(shownText, "out");
+    typing(true);
+    try {
+      let out;
+      const text = (input && input.text) || "";
+      if (MOCK) {
+        await new Promise((res) => setTimeout(res, 500));
+        if (c.step < 3) { mockNotes.push(text); out = { say: INBOUND_Q.en[c.step], step: c.step + 1, done: false }; }
+        else {
+          mockNotes.push(text);
+          const ans = mockRead(mockNotes);
+          out = { say: MOCK_DONE[ans], done: true, reading: { answer: ans, engine: "keywords (mock)", where_they_are: text } };
+        }
+      } else {
+        const fd = new FormData(); fd.append("text", text);
+        out = await postJSON("/api/sim/inbound/" + encodeURIComponent(c.id) + "?attempt=" + encodeURIComponent(c.attempt) +
+          "&step=" + c.step + "&n=" + c.n, fd);
+      }
+      typing(false);
+      if (out.say) { bubble(out.say, "in"); speak(out.say, c.lang); }
+      if (out.done) {
+        endConvo(out.reading || null, "Ended");
+        $("c-status").textContent = "Call ended";
+      } else {
+        c.n = out.reask && out.step === 1 && c.step === 1 ? 2 : 1;
+        c.step = out.step;
+        $("c-status").textContent = "Connected · demo · question " + c.step + " of 3";
+        setInputs(true); $("c-text").focus({ preventScroll: true });
+      }
+    } catch (e) {
+      typing(false); showErr(e.message);
+      if (e.status === 404) endConvo(null, "The call dropped."); else setInputs(true);
+    } finally { busy = false; }
+  }
 
   renderQueue();
 })();
