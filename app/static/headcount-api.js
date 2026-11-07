@@ -149,6 +149,32 @@
         try { return await request("GET", "/api/health"); }
         catch (e) { if (e.status === 404 || e.status === 405) return null; throw e; }
       },
+      /**
+       * One resident, for the profile panel: the State row plus assist, contact_mode, call_sid, attempt (webhook token),
+       * demo, last_call_status ({status: "initiated"|"queued"|"ringing"|"in-progress"|"completed"|"busy"|"no-answer"|
+       * "failed"|"canceled", attempt, t, call_sid} or null) and events (this resident only, oldest first).
+       * Returns null on an older server without the endpoint.
+       */
+      getResident: async (rid) => {
+        try { return await request("GET", "/api/residents/" + q(rid)); }
+        catch (e) { if (e.status === 405 || (e.status === 404 && !/resident/i.test(e.detail))) return null; throw e; }
+      },
+      /**
+       * Call one resident now (restarts just them: calls 1..3 with retries and a welfare check).
+       * A REAL phone (real_phone: true) needs confirm=true, which sends X-Headcount-Confirm: yes; without it the
+       * server answers 409 "Confirm to place a real call". @returns {Promise<{ok: true, real_phone: boolean}>}
+       */
+      callResident: async (rid, confirm) => {
+        let res;
+        try {
+          res = await fetch("/api/residents/" + q(rid) + "/call", { method: "POST", cache: "no-store",
+            headers: Object.assign({ Accept: "application/json" }, confirm ? { "X-Headcount-Confirm": "yes" } : {}) });
+        } catch (e) { throw new ApiError(0, "Server unreachable"); }
+        let data = null;
+        try { data = await res.json(); } catch (e) { /* empty */ }
+        if (!res.ok) throw new ApiError(res.status, (data && data.detail) || res.statusText);
+        return data;
+      },
       /** @returns {Promise<Ringing[]>} */
       simRinging: () => request("GET", "/api/sim/ringing"),
       /** Pick up. Rejects with status 409 if the call is no longer ringing. @returns {Promise<{say: string}>} */
@@ -420,7 +446,27 @@
       },
       reset: async () => { await delay(); reset(); return { ok: true }; },
       setAutopilot: async (on) => { await delay(); autopilot = !!on; return { autopilot }; },
-      health: async () => ({ ok: true, gemini: true, twilio: false, model: "mock", autopilot, mock: true }),
+      health: async () => ({ ok: true, gemini: true, twilio: false, model: "mock", autopilot, mock: true, demo_rid: null }),
+      getResident: async (rid) => {
+        await delay();
+        const r = byId(rid);
+        if (!r) throw new ApiError(404, "no resident " + rid);
+        const row = snapshot().residents.find((x) => x.id === r.id);
+        const st = { CALLING: "ringing", IN_CALL: "in-progress" }[r.status] || (r.attempts ? "completed" : null);
+        return copy(Object.assign(row, { call_sid: "", attempt: r.attempts, demo: false,
+          last_call_status: st ? { status: st, attempt: r.attempts, t: r.updated, call_sid: "" } : null,
+          events: events.filter((e) => e.rid === r.id) }));
+      },
+      callResident: async (rid) => {
+        await delay();
+        const r = byId(rid);
+        if (!r) throw new ApiError(404, "no resident " + rid);
+        if (startedAt === null) startedAt = now();
+        Object.assign(r, { status: "PENDING", attempts: 0, unclear: 0, reading: null, family: "", channel: "", updated: now() });
+        log(r, "Demo: single call requested (simulated)", "start");
+        dial(r);
+        return { ok: true, real_phone: false };
+      },
       simRinging: async () => {
         await delay();
         if (PHONE_DEMO && startedAt !== null && !residents.some((r) => UNACC.has(r.status))) start();   // loop the demo
