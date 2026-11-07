@@ -23,6 +23,39 @@ Evacuation alerts broadcast into the dark. A phone buzzes, a siren sounds, and n
 
 Gemini only turns messy speech into structured facts (answer, people with them, medical equipment, a responder note). Retries, welfare checks, priority, and who gets a text are ordinary Python with tests. No AI call ever decides who gets help, so every decision on the board can be explained. If Gemini is slow or unavailable, the classifier falls back to keywords.
 
+## How Headcount decides
+
+Every call goes through one state machine (`app/engine.py`). Each event carries the attempt number it belongs to, so a late webhook from an old call can never overwrite a newer answer.
+
+```
+PENDING ─► CALLING ─► IN_CALL ─► OUT | NEEDS_RIDE | NEEDS_MEDICAL | STAYING
+              │           │
+              │           └─ unclear twice ─► NEEDS_CALLBACK  (a person calls back)
+              └─ no answer / declined ─► RETRY_WAIT ─► CALLING ...
+                                after 3 calls ─► WELFARE_CHECK  (a person goes to the door)
+```
+
+**Understanding speech** (`app/classify.py`): Gemini returns a structured `CallReading` (answer, people with them, mobility, medical equipment, pets, where they are, their words, and a one-line responder note). The call never waits on AI: Gemini has a timeout, and on any error or timeout the classifier falls back to English and Spanish keywords. Keypad 1/2/3 skips classification entirely. The board shows which engine read each answer: `Gemini (model)`, `keywords (...)` with the reason, or `keypad`.
+
+**Priority** (`app/priority.py`) is plain arithmetic that the board shows next to every resident:
+
+`score = status weight × vulnerability multiplier`
+
+| Status | Weight | | Vulnerability | Adds |
+|---|---|---|---|---|
+| WELFARE_CHECK | 100 | | age 85+ (or 75+) | +0.4 (+0.25) |
+| NEEDS_MEDICAL | 95 | | oxygen, from their profile or said on the call | +0.4 |
+| NEEDS_RIDE | 75 | | bedridden (or mobility help) | +0.5 (+0.3) |
+| NEEDS_CALLBACK | 65 | | lives alone | +0.2 |
+| STAYING | 55 | | hard of hearing | +0.15 |
+| calling / retrying | 40 | | each extra person with them (max 3) | +0.1 |
+| not yet called | 35 | | | |
+| OUT | 0 | | | |
+
+The multiplier starts at 1.0. For example, Walter (87, bedridden, lives alone, never reached) scores 100 × 2.1 = 210 and goes to the top of the board.
+
+**Family texts** go out the moment someone answers, or when a welfare check is called ("we could not reach Walter after 3 calls, a responder is being sent"). Residents without a contact are skipped.
+
 ## Architecture
 
 ```
@@ -107,10 +140,64 @@ Quick check without VoiceOS:
 python3 -c "import mcp_server as m; print(m.evacuation_status())"
 ```
 
+## The demo zone
+
+`app/seed.py` holds 10 fictional residents in "Alpine (demo zone)". On autopilot, their scripted answers cover every path:
+
+| Resident | What happens | Ends as |
+|---|---|---|
+| Maria Gonzalez, 81 (Spanish, oxygen) | misses the first call, then "No tengo carro y uso oxígeno" | NEEDS_RIDE |
+| Walter Briggs, 87 (bedridden) | never answers | WELFARE_CHECK |
+| Dorothy Chen, 76 | "We're out, we're at my son's place in El Cajon." | OUT |
+| Frank Russo, 84 | wife in a wheelchair, can't drive, has a dog | NEEDS_RIDE |
+| James Whitaker, 79 (hard of hearing) | declines, then "I'm not leaving. I've got four horses here." | STAYING |
+| Rosa Medina, 90 (Spanish) | "Me caí en la cocina y no me puedo levantar." | NEEDS_MEDICAL |
+| George Patel, 72 | presses 1 | OUT |
+| Betty Lawson, 85 | "Who is this?", then "I already left. I'm at the shelter." | OUT |
+| Luis Herrera, 68 (Spanish) | misses the first call, then "Ya salimos todos, estamos bien." | OUT |
+| Edna Morales, 93 (oxygen, bedridden) | misses the first call, then "I can't get out of bed by myself." | NEEDS_RIDE |
+
+A full simulated run finishes in under a minute with the faster stage timers below: 4 OUT, 3 NEEDS_RIDE, 1 NEEDS_MEDICAL, 1 STAYING, 1 WELFARE_CHECK.
+
+## Configuration
+
+Everything lives in `.env` (see [`.env.example`](.env.example) for every variable, with comments). Nothing is required: with an empty `.env`, Headcount runs fully simulated with keyword classification.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | none, `gemini-3.8-flash` | Speech understanding. Without a key, keywords and keypad only. |
+| `HEADCOUNT_GEMINI_TIMEOUT` | 6 | Seconds before falling back to keywords |
+| `HEADCOUNT_STAGGER` | 2 | Seconds between first dials |
+| `HEADCOUNT_RING_TIMEOUT` | 20 | Seconds a call rings before it counts as missed |
+| `HEADCOUNT_RETRY_GAP` | 15 | Seconds before calling a missed resident again |
+| `HEADCOUNT_MAX_ATTEMPTS` | 3 | Calls before a welfare check |
+| `HEADCOUNT_AUTOPILOT` | 1 | Simulated residents answer on their own (also a toggle on the board) |
+
+For a faster stage demo, try `HEADCOUNT_STAGGER=1 HEADCOUNT_RING_TIMEOUT=8 HEADCOUNT_RETRY_GAP=4`.
+
 ## Tests
 
 ```bash
 pytest -q
+```
+
+50 tests, all passing with no API keys. They cover the state machine (three misses to a welfare check, late or stale webhooks never overwrite an answer, two unclear answers to a callback, every seed script on autopilot), the priority formula, the keyword fallback on every seed utterance in both languages, Gemini errors and timeouts falling back to keywords, and the Twilio webhooks, simulator routes, and signature validation.
+
+## Project layout
+
+```
+app/config.py        settings from .env
+app/models.py        Status, Answer, CallReading, Resident
+app/scripts.py       English and Spanish call scripts and family texts
+app/classify.py      Gemini classifier, keyword and keypad fallback
+app/priority.py      priority score and the reasons behind it
+app/engine.py        call state machine: retries, welfare checks, texts
+app/seed.py          the 10 demo residents, plus residents_phones.json mapping
+app/main.py          FastAPI server: board, simulator, and Twilio webhooks
+app/twilio_voice.py  outbound calls, TwiML, SMS, signature validation
+app/static/          board.html (dispatch board), phone.html (phone simulator)
+mcp_server.py        VoiceOS tools over the same HTTP API
+tests/               engine, classifier, and webhook tests
 ```
 
 ## Safety
