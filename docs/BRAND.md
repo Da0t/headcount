@@ -31,6 +31,10 @@ The wordmark is live `<text>` (Inter, then the system sans): "Head" in ink and "
 
 The board's accent color is the same `#C2410C`, so the logo and the UI match.
 
+## Social card
+
+`app/static/og-image.svg` is the 1200×630 social share card used by the board and phone simulator. It pairs the Headcount mark and wordmark with the service tagline and a note that the Tierrasanta demo residents are fictional.
+
 ## Clear space and size
 
 - Keep clear space around the logo at least the height of the house's roof (one quarter of the mark's height) on every side.
