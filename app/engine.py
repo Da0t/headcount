@@ -223,7 +223,10 @@ class Engine:
         r.reading = reading
         self._touch(r, status)
         note = reading.responder_note or reading.quote
-        self.log(r, f"{_LABEL[status]}. {note}".strip(), _KIND_FOR[status])
+        label = _LABEL[status]
+        # keyword/keypad notes already start with the status ("Needs a ride out."), so don't say it twice
+        repeats = note.lower().startswith(label.lower()[:10]) or note.startswith(("Says they", "Refusing", "Pressed"))
+        self.log(r, (note if repeats and note else f"{label}. {note}").strip(), _KIND_FOR[status])
         await self._text_family(r)
         return scripts.CONFIRM[reading.answer][lang], False
 
