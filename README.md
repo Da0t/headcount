@@ -130,6 +130,21 @@ It lists which settings are set (never their values) and checks the Twilio crede
 6. `uvicorn app.main:app --port 8000`, open the board, and press **Start**. The phones ring within a few seconds.
 7. **If Twilio misbehaves on stage:** delete `residents_phones.json` and restart. Everything still runs simulated.
 
+## Live demo: call the presenter
+
+To show one real call on stage without calling anyone else:
+
+1. In `residents_phones.json`, map **one** resident to the presenter's own Twilio-verified phone, with a name override:
+   ```json
+   {"1": {"phone": "+1...", "contact_phone": "+1...", "name": "Dat (presenter)"}}
+   ```
+2. Set `HEADCOUNT_DEMO_RID=1` in `.env`. It shows up as `demo_rid` in `/api/health`.
+3. Call (or text, for a text check-in resident) just that one person: `POST /api/residents/1/call`. For a real phone, the request must include the header `X-Headcount-Confirm: yes`, or it returns 409 "Confirm to place a real call". Simulated residents need no header.
+
+While the call runs, the event log shows a live timeline: each Twilio status (`Twilio: initiated`, `ringing`, `answered`, `completed`), what the person said (`Said:`), and how it was read (`Heard:`). `GET /api/residents/{rid}` returns one resident's full profile: their board row, `assist` plan, `contact_mode`, `call_sid`, last call status, and their own events.
+
+The VoiceOS tools never place a single real call on their own. The confirmation stays a human click.
+
 ## Simulator and mock mode
 
 - **`/phone`** is a phone simulator. A teammate can answer any simulated resident's call from a laptop or phone, then type or speak the answer.
