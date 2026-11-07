@@ -79,7 +79,7 @@ def _short(exc: BaseException) -> str:
     return f"{name}: {msg[:80]}" if msg else name
 
 
-async def classify_text(text: str, model: str = "gemini-3.8-flash", timeout: float = 6.0,
+async def classify_text(text: str, model: str = "gemini-3.5-flash", timeout: float = 6.0,
                         api_key: Optional[str] = None) -> CallReading:
     """Gemini first; on any error, timeout, or missing key, fall back to keywords."""
     text = (text or "").strip()
@@ -108,7 +108,7 @@ async def classify_text(text: str, model: str = "gemini-3.8-flash", timeout: flo
     return r
 
 
-async def classify_audio(audio_bytes: bytes, mime: str = "audio/webm", model: str = "gemini-3.8-flash",
+async def classify_audio(audio_bytes: bytes, mime: str = "audio/webm", model: str = "gemini-3.5-flash",
                          timeout: float = 6.0, api_key: Optional[str] = None) -> CallReading:
     """Gemini only. If Gemini is unavailable the reading is UNCLEAR, so the call asks again."""
     key = api_key if api_key is not None else _api_key()
@@ -228,6 +228,16 @@ def _pets(t: str) -> list[str]:
     return found
 
 
+# A negation up to 3 words before an injury word cancels it ("no me cai", "haven't fallen or been hurt"),
+# unless a clause break or "and/but" sits in between ("I can't walk and I'm hurt" stays medical).
+_NEGATED_INJURY = re.compile(
+    r"\b(?:not|never|no|nobody|nadie|ni|\w+n't)\b"
+    r"(?:\s+(?!and\b|but\b|y\b|pero\b)[\w']+){0,3}?"
+    r"\s+(?:hurt|injured|fell|fallen|me cai|se cayo|herid[oa]|lastimad[oa]|me lastime)\b"
+    # chained: "haven't fallen or been hurt", "no me cai ni me lastime"
+    r"(?:\s+(?:or|nor|ni)(?:\s+[\w']+){0,2}?\s+(?:hurt|injured|fell|fallen|me cai|herid[oa]|lastimad[oa]|me lastime)\b)*"
+)
+
 _WHERE = re.compile(
     r"\b(?:we're|we are|i'm|i am|staying)\s+(at|with|in)\s+([^.!?,;]+(?:\s+in\s+[^.!?,;]+)?)", re.I
 )
@@ -247,7 +257,7 @@ def _where(text: str) -> str:
 
 def keyword_classify(text: str) -> CallReading:
     t = _norm(text)
-    t_med = t
+    t_med = _NEGATED_INJURY.sub(" ", t)
     for p in NOT_MEDICAL:
         t_med = t_med.replace(p, " ")
 

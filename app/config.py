@@ -26,8 +26,8 @@ def _float(name: str, default: float) -> float:
 @dataclass
 class Settings:
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
-    gemini_timeout: float = 6.0
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_timeout: float = 8.0
 
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
@@ -63,8 +63,8 @@ def load_settings(**overrides) -> Settings:
     """Build Settings from the environment. Keyword overrides win (tests use them to shrink timers)."""
     s = Settings(
         gemini_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "",
-        gemini_model=os.getenv("GEMINI_MODEL") or "gemini-3.8-flash",
-        gemini_timeout=_float("HEADCOUNT_GEMINI_TIMEOUT", 6.0),
+        gemini_model=os.getenv("GEMINI_MODEL") or "gemini-3.5-flash",
+        gemini_timeout=_float("HEADCOUNT_GEMINI_TIMEOUT", 8.0),
         twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
         twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
         twilio_api_key_sid=os.getenv("TWILIO_API_KEY_SID", ""),
