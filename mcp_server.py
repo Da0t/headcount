@@ -171,16 +171,22 @@ def resident_status(name: str) -> str:
     r = matches[0]
     attempts = r.get("attempts", 0)
     words = STATUS_WORDS.get(r.get("status"), str(r.get("status")).lower())
+    texting = r.get("contact_mode") == "text"
     parts = [
         f"{r.get('name')}, {r.get('age')}, at {r.get('address')}, {words}.",
-        f"{_n(attempts, 'call attempt', 'call attempts')} so far.",
+        (f"Checked in by text, {_n(attempts, 'text', 'texts')} sent so far." if texting
+         else f"{_n(attempts, 'call attempt', 'call attempts')} so far."),
     ]
     reading = r.get("reading") or {}
     quote = _quote(reading)
     if quote:
         parts.append(f'They said: "{quote}"')
     elif reading.get("engine") == "keypad":
-        parts.append("They answered with the keypad.")
+        digit = (reading.get("quote") or "").strip("() ").replace("pressed ", "")
+        if texting:
+            parts.append(f"They replied {digit} by text." if digit else "They replied by text.")
+        else:
+            parts.append("They answered with the keypad.")
     note = _clean_note(reading.get("responder_note", ""), words)
     if note:
         parts.append(f"Note: {note}")
@@ -190,6 +196,15 @@ def resident_status(name: str) -> str:
 
 
 ACCESSIBLE = ("wheelchair", "ambulance")
+
+
+def _short_need(need: str) -> str:
+    """'oxygen: bring portable tanks, ...' -> 'oxygen'; '1 more person(s) with them' -> '1 more person with them'."""
+    n = str(need).split(":", 1)[0].strip()
+    first = n.split(" ", 1)[0]
+    if first.isdigit():
+        n = n.replace("person(s)", "person" if first == "1" else "people")
+    return n
 
 
 def _shelter_name(shelter) -> str:
@@ -221,15 +236,19 @@ def who_needs_accessible_transport() -> str:
     for r, assist, transport in rows[:8]:
         article = "an" if transport[:1].lower() in "aeiou" else "a"
         line = f"{r.get('name', 'Unknown')} at {r.get('address', 'unknown address')} needs {article} {transport}"
-        needs = [str(x) for x in (assist.get("needs") or []) if x]
+        needs = [_short_need(x) for x in (assist.get("needs") or []) if x]
         if needs:
             line += f" ({_join(needs)})"
         line += "."
         shelter = _shelter_name(assist.get("shelter"))
         if shelter:
             line += f" Take them to {shelter}"
-            why = [str(x) for x in (assist.get("shelter_why") or []) if x]
-            line += f", which has {_join(why)}." if why else "."
+            why = [str(x).strip() for x in (assist.get("shelter_why") or []) if x]
+            has = [w for w in why if ":" not in w and "," not in w]   # plain capability labels
+            notes = [w for w in why if w not in has]                  # e.g. "no demo shelter also has: ..."
+            line += f": {_join(has)}." if has else "."
+            for n in notes:
+                line += f" Note: {n[:1].upper() + n[1:]}."
         lines.append(line)
     return " ".join(lines)
 
