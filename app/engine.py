@@ -337,7 +337,7 @@ class Engine:
                 "status": r.status.value, "attempts": r.calls, "channel": r.channel, "score": s, "why": why,
                 "reading": r.reading.model_dump(mode="json") if r.reading else None,
                 "family": r.family_notified, "updated": r.updated, "real_phone": bool(r.phone),
-                "contact_mode": r.contact_mode,
+                "contact_mode": r.contact_mode, "lat": r.lat, "lng": r.lng,
             })
         rows.sort(key=lambda x: (-x["score"], x["name"]))
         return {
