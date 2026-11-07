@@ -143,7 +143,7 @@ To show one real call on stage without calling anyone else:
 
 While the call runs, the event log shows a live timeline: each Twilio status (`Twilio: initiated`, `ringing`, `answered`, `completed`), what the person said (`Said:`), and how it was read (`Heard:`). `GET /api/residents/{rid}` returns one resident's full profile: their board row, `assist` plan, `contact_mode`, `call_sid`, last call status, and their own events.
 
-The VoiceOS tools never place a single real call on their own. The confirmation stays a human click.
+There is deliberately no VoiceOS tool for this single call: the confirmation stays a deliberate human action. (`start_evacuation_calls` does start the whole campaign, including real calls to mapped residents, after VoiceOS asks for confirmation.)
 
 ## Simulator and mock mode
 
