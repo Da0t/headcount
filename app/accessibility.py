@@ -3,7 +3,7 @@
 Derived from the resident's profile (oxygen, mobility, bedridden, hearing) and, once they answer,
 their reading (answer, mobility_help, medical_equipment, pets, people_with_them).
 
-ALL SHELTERS BELOW ARE FICTIONAL demo data for the fictional "Alpine (demo zone)". They are not
+ALL SHELTERS BELOW ARE FICTIONAL demo data for the fictional "Tierrasanta, San Diego (demo zone)". They are not
 real facilities and must never be shown to anyone as real evacuation guidance.
 """
 from __future__ import annotations
@@ -44,15 +44,15 @@ class Shelter:
 
 
 SHELTERS: list[Shelter] = [
-    Shelter("Alpine High School gym (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, oxygen_power=True, lat=32.8402, lng=-116.7735, short="High School"),
-    Shelter("Alpine Community Center (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, pets_allowed=True, lat=32.8322, lng=-116.7588, short="Community Ctr"),
-    Shelter("Viejas Valley Medical Shelter (demo)", "fictional, Alpine demo zone",
-            wheelchair_accessible=True, oxygen_power=True, medical_staff=True, lat=32.8415, lng=-116.7395,
+    Shelter("Tierrasanta Rec Center (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            wheelchair_accessible=True, oxygen_power=True, lat=32.8262, lng=-117.1035, short="Rec Center"),
+    Shelter("Mission Trails Community Center (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            wheelchair_accessible=True, pets_allowed=True, lat=32.8298, lng=-117.0905, short="Community Ctr"),
+    Shelter("Tierrasanta Medical Shelter (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            wheelchair_accessible=True, oxygen_power=True, medical_staff=True, lat=32.8178, lng=-117.1115,
             short="Medical"),
-    Shelter("Harbison Canyon Fairgrounds (demo)", "fictional, Alpine demo zone",
-            pets_allowed=True, large_animals=True, lat=32.8165, lng=-116.7690, short="Fairgrounds"),
+    Shelter("Mission Trails Equestrian Staging Area (demo)", "fictional, Tierrasanta demo zone, City of San Diego",
+            pets_allowed=True, large_animals=True, lat=32.8335, lng=-117.0800, short="Equestrian"),
 ]
 
 LARGE_ANIMALS = re.compile(r"\b(horse|horses|pony|ponies|cow|cows|cattle|goat|goats|sheep|pig|pigs|llama|llamas|"

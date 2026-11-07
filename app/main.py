@@ -144,7 +144,7 @@ async def call_resident(rid: int, request: Request):
     return {"ok": True, "real_phone": real}
 
 
-BASE = {"name": "Alpine Fire Station (demo)", "lat": 32.8368, "lng": -116.7642}
+BASE = {"name": "Fire Station (demo)", "lat": 32.8252, "lng": -117.0972}
 
 
 def _zone_polygon(points: list[tuple[float, float]], pad: float = 0.004, n: int = 32) -> dict:

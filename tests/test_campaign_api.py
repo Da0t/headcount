@@ -94,7 +94,7 @@ def test_health(api):
     c, eng = api
     h = c.get("/api/health").json()
     assert h == {"ok": True, "gemini": False, "twilio": False, "model": main.settings.gemini_model,
-                 "autopilot": True}
+                 "autopilot": True, "demo_rid": main.DEMO_RID}
     c.post("/api/autopilot?on=false")
     assert c.get("/api/health").json()["autopilot"] is False
 
