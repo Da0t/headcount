@@ -104,8 +104,8 @@ def _running() -> bool:
 
 @app.post("/api/start")
 async def start():
-    # Idempotent while a campaign is live: restarting would reuse attempt numbers, so a late webhook
-    # from a call that is still ringing could land on the new campaign. Reset first to start over.
+    # Idempotent while a campaign is live: a double-click on Start must not wipe answers already collected
+    # or re-dial people mid-call. Reset first to start over.
     if _running():
         return {"ok": True, "already_running": True}
     await engine.start()
