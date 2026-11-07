@@ -138,15 +138,26 @@ To show one real call on stage without calling anyone else:
    ```json
    {"1": {"phone": "+1...", "contact_phone": "+1...", "name": "Dat (presenter)"}}
    ```
-2. Set `HEADCOUNT_DEMO_RID=1` in `.env`. It shows up as `demo_rid` in `/api/health`.
-3. Call (or text, for a text check-in resident) just that one person: `POST /api/residents/1/call`. For a real phone, the request must include the header `X-Headcount-Confirm: yes`, or it returns 409 "Confirm to place a real call". Simulated residents need no header.
+2. Set `HEADCOUNT_DEMO_RID=1` in `.env`. It shows up as `demo_rid` in `/api/health`, and the board shows a **Call me** button for that resident.
+3. Click any resident on the board to open their profile, then press **Call now** (or **Call me**). For a real phone, the board first asks "This places a REAL phone call to this resident's real number. Continue?" The profile then shows the call step by step. Under the hood, this is `POST /api/residents/1/call`, which calls (or texts, for a text check-in resident) just that one person. For a real phone, the request must include the header `X-Headcount-Confirm: yes`, or it returns 409 "Confirm to place a real call". Simulated residents need no header.
 
 While the call runs, the event log shows a live timeline: each Twilio status (`Twilio: initiated`, `ringing`, `answered`, `completed`), what the person said (`Said:`), and how it was read (`Heard:`). `GET /api/residents/{rid}` returns one resident's full profile: their board row, `assist` plan, `contact_mode`, `call_sid`, last call status, and their own events.
 
 There is deliberately no VoiceOS tool for this single call: the confirmation stays a deliberate human action. (`start_evacuation_calls` does start the whole campaign, including real calls to mapped residents, after VoiceOS asks for confirmation.)
 
+## Map data
+
+The server provides map data for the demo zone around Alpine (San Diego County). The board's map panel is coming next.
+
+- **Everything is fictional:** resident locations, "Alpine Fire Station (demo)", and the four demo shelters. No directions service is used.
+- **Token:** put a Mapbox public token in `.env` as `MAPBOX_TOKEN` (`.env` is gitignored; never commit it). The server hands it to the board through `/api/map`, so use a **URL-restricted public token** (`pk.…`) scoped to your demo URL.
+- **No token?** `/api/map` returns an empty `token`, and the board runs without a map. Everything else works.
+- **Data:** `GET /api/map` returns `{"token", "center": [lng, lat], "zoom", "zone": <GeoJSON Polygon around all pins>, "base": {"name", "lat", "lng"}, "shelters": [{"name", "short", "lng", "lat", "wheelchair_accessible", "oxygen_power", "medical_staff", "pets_allowed", "large_animals", "fictional": true}]}`. Each resident in `/api/state` carries its own `lat`/`lng`, and its `assist` plan carries `shelter_lat`/`shelter_lng` (null when there's no shelter).
+
 ## Simulator and mock mode
 
+- **Presentation mode:** press **F** on the board (or the full-screen button) to fill the screen for a projector.
+- **Resident profiles:** click any row on the board to open that resident's profile: their answer, transport plan, events, and a step-by-step view of their current call.
 - **`/phone`** is a phone simulator. A teammate can answer any simulated resident's call from a laptop or phone, then type or speak the answer.
 - **If the server goes away**, the board says so ("Server unreachable, retrying every second"), keeps showing the last data with its time, and disables Start and Reset until it's back.
 - **`/?mock=1`** runs the board entirely in the browser with a fake campaign and no backend. Use it to rehearse, or as a fallback if the server dies.
@@ -210,6 +221,7 @@ Everything lives in `.env` (see [`.env.example`](.env.example) for every variabl
 | `HEADCOUNT_RETRY_GAP` | 15 | Seconds before calling a missed resident again |
 | `HEADCOUNT_MAX_ATTEMPTS` | 3 | Calls before a welfare check |
 | `HEADCOUNT_AUTOPILOT` | 1 | Simulated residents answer on their own (also a toggle on the board) |
+| `MAPBOX_TOKEN` | none | URL-restricted Mapbox public token for the board's map. Without it, the board skips the map. |
 
 For a faster stage demo, try `HEADCOUNT_STAGGER=1 HEADCOUNT_RING_TIMEOUT=8 HEADCOUNT_RETRY_GAP=4`.
 
