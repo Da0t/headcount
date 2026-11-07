@@ -33,8 +33,8 @@ class TwilioClient:
     def place_call(self, r: Resident, attempt: int) -> str:
         base = self.settings.public_base_url
         core = dict(to=r.phone, from_=self.settings.twilio_from_number,
-                    url=f"{base}/twilio/voice/{r.id}?attempt={attempt}", method="POST")
-        status = dict(status_callback=f"{base}/twilio/status/{r.id}?attempt={attempt}", status_callback_method="POST")
+                    url=f"{base}/twilio/voice/{r.id}?attempt={attempt}")  # POST is the default; trial accounts reject an explicit method
+        status = dict(status_callback=f"{base}/twilio/status/{r.id}?attempt={attempt}")
         # Richest first. Trial accounts reject some optional parameters with HTTP 400 ("limited parameter
         # access"); a rejected request places no call, so fall back until Twilio accepts one.
         tries = [
