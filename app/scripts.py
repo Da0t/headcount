@@ -60,6 +60,27 @@ CALLBACK = {
     "es": "Gracias. Una persona de nuestro equipo le llamará pronto. Si está en peligro, llame al 911.",
 }
 
+# Text check-in for deaf and hard-of-hearing residents (contact_mode="text").
+TEXT_PROMPT = {
+    "en": (
+        "Headcount, the evacuation check for your neighborhood: there is an evacuation order for your area, {first}. "
+        "Reply 1 if you are out, 2 if you need a ride, 3 if you need medical help, or reply in your own words. "
+        "If anyone is in danger right now, text or call 911."
+    ),
+    "es": (
+        "Headcount, la verificación de evacuación de su vecindario: hay una orden de evacuación para su zona, {first}. "
+        "Responda 1 si ya salió, 2 si necesita transporte, 3 si necesita ayuda médica, o responda con sus palabras. "
+        "Si alguien está en peligro ahora mismo, envíe un texto o llame al 911."
+    ),
+}
+
+
+def prompt_for(r) -> str:
+    """The opening message for a resident: a spoken prompt for voice, a text for contact_mode='text'."""
+    table = TEXT_PROMPT if getattr(r, "contact_mode", "voice") == "text" else PROMPT
+    return table[lang(r.lang)].format(first=r.first)
+
+
 RETRY_SOON = {
     "en": "We'll try calling again shortly. Goodbye.",
     "es": "Volveremos a llamarle en un momento. Adiós.",

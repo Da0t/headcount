@@ -130,25 +130,40 @@ class Engine:
         r.call_sid = ""
         self._touch(r, Status.CALLING)
 
+        texting = r.contact_mode == "text"
         if self.twilio is not None and r.phone:
             r.channel = "twilio"
-            self.log(r, f"Calling {r.phone} (attempt {attempt}).", "info")
+            if texting:
+                self.log(r, f"Texted check-in to {r.phone} (attempt {attempt}).", "info")
+            else:
+                self.log(r, f"Calling {r.phone} (attempt {attempt}).", "info")
             try:
-                sid = await asyncio.to_thread(self.twilio.place_call, r, attempt)
+                send = self.twilio.send_checkin if texting else self.twilio.place_call
+                sid = await asyncio.to_thread(send, r, attempt)
             except Exception as exc:  # noqa: BLE001
-                self.log(r, f"Call could not be placed: {exc}", "error")
-                await self.no_answer(rid, attempt, reason="call could not be placed")
+                what = "Text" if texting else "Call"
+                self.log(r, f"{what} could not be placed: {exc}", "error")
+                await self.no_answer(rid, attempt, reason=f"{what.lower()} could not be placed")
                 return
             if r.attempts == attempt and r.status in LIVE:
                 r.call_sid = str(sid or "")
-                # safety net in case Twilio's status callback never arrives
-                self._schedule(rid, "ring", self.settings.ring_timeout + 120, self.no_answer, rid, attempt,
-                               "no status from Twilio")
+                if texting:
+                    # no status callback for a reply; wait a few rings' worth for a text back
+                    self._schedule(rid, "ring", self.settings.ring_timeout * 3, self.no_answer, rid, attempt,
+                                   "no reply to text")
+                else:
+                    # safety net in case Twilio's status callback never arrives
+                    self._schedule(rid, "ring", self.settings.ring_timeout + 120, self.no_answer, rid, attempt,
+                                   "no status from Twilio")
             return
 
         r.channel = "sim"
-        self.log(r, f"Calling (simulated, attempt {attempt}).", "info")
-        self._schedule(rid, "ring", self.settings.ring_timeout, self.no_answer, rid, attempt, "no answer")
+        if texting:
+            self.log(r, f"Texted check-in (simulated, attempt {attempt}).", "info")
+            self._schedule(rid, "ring", self.settings.ring_timeout, self.no_answer, rid, attempt, "no reply to text")
+        else:
+            self.log(r, f"Calling (simulated, attempt {attempt}).", "info")
+            self._schedule(rid, "ring", self.settings.ring_timeout, self.no_answer, rid, attempt, "no answer")
         step = self._step(r, attempt)
         if self.autopilot and step is not None and step != "no_answer":
             # pick up before the ring timeout, even if someone shortens HEADCOUNT_RING_TIMEOUT for a demo
@@ -172,12 +187,13 @@ class Engine:
         max_attempts = self.settings.max_attempts
         if r.calls >= max_attempts:
             self._touch(r, Status.WELFARE_CHECK)
-            self.log(r, f"No answer after {r.calls} calls. Welfare check: send a person to {r.address}.", "alert")
+            self.log(r, f"No answer after {r.calls} {'texts' if r.contact_mode == 'text' else 'calls'}. Welfare check: send a person to {r.address}.", "alert")
             await self._text_family(r)
         else:
             self._touch(r, Status.RETRY_WAIT)
             gap = self.settings.retry_gap
-            self.log(r, f"Call {attempt} missed ({reason}). Retrying in {gap:g}s.", "warn")
+            what = "Text" if r.contact_mode == "text" else "Call"
+            self.log(r, f"{what} {attempt} missed ({reason}). Retrying in {gap:g}s.", "warn")
             self._schedule(rid, "dial", gap, self._dial, rid)
 
     def answered(self, rid: int, attempt: int) -> bool:
@@ -187,7 +203,7 @@ class Engine:
         if r.status == Status.IN_CALL:
             return True
         self._touch(r, Status.IN_CALL)
-        self.log(r, f"Picked up (attempt {attempt}).", "info")
+        self.log(r, f"{'Replied' if r.contact_mode == 'text' else 'Picked up'} (attempt {attempt}).", "info")
         watchdog = 150 if r.channel == "twilio" else 90
         self._schedule(rid, "ring", watchdog, self.no_answer, rid, attempt, "call ended without an answer")
         return True
@@ -302,6 +318,7 @@ class Engine:
                 "status": r.status.value, "attempts": r.calls, "channel": r.channel, "score": s, "why": why,
                 "reading": r.reading.model_dump(mode="json") if r.reading else None,
                 "family": r.family_notified, "updated": r.updated, "real_phone": bool(r.phone),
+                "contact_mode": r.contact_mode,
             })
         rows.sort(key=lambda x: (-x["score"], x["name"]))
         return {

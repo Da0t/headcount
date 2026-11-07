@@ -80,6 +80,7 @@ class Resident:
     bedridden: bool = False
     lives_alone: bool = False
     hearing: bool = False
+    contact_mode: str = "voice"  # "voice" = phone call; "text" = SMS check-in for deaf / hard-of-hearing residents
     contact_name: str = ""
     contact_relation: str = ""
     phone: str = ""  # real number: called via Twilio

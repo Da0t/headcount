@@ -12,7 +12,8 @@ log = logging.getLogger("headcount.seed")
 
 ZONE = "Alpine (demo zone)"
 
-# sim_script: one step per attempt. "no_answer" | "decline" | [utterances...]. A lone digit is a keypad press.
+# sim_script: one step per attempt. "no_answer" | "decline" | [utterances...]. A lone digit is a keypad press
+# (or a "1"/"2"/"3" text reply for contact_mode="text" residents).
 SEED: list[Resident] = [
     Resident(1, "Maria Gonzalez", 81, "1420 Tavern Rd", lang="es", oxygen=True, lives_alone=True,
              contact_name="Ana", contact_relation="daughter",
@@ -30,7 +31,8 @@ SEED: list[Resident] = [
     Resident(6, "Rosa Medina", 90, "640 South Grade Rd", lang="es", mobility=True, lives_alone=True,
              contact_name="Carmen", contact_relation="granddaughter",
              sim_script=[["Me caí en la cocina y no me puedo levantar."]]),
-    Resident(7, "George Patel", 72, "77 Marshall Rd", contact_name="Priya", contact_relation="daughter",
+    Resident(7, "George Patel", 72, "77 Marshall Rd", hearing=True, contact_mode="text",
+             contact_name="Priya", contact_relation="daughter",
              sim_script=[["1"]]),
     Resident(8, "Betty Lawson", 85, "302 Olive Ln", lives_alone=True, contact_name="Susan", contact_relation="daughter",
              sim_script=[["Hmm? Who is this?",

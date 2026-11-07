@@ -284,3 +284,51 @@ def test_twilio_ready_rejects_placeholders():
     assert not load_settings(**{**base, "public_base_url": "https://your-tunnel.trycloudflare.com"}).twilio_ready
     assert not load_settings(**{**base, "public_base_url": "http://abc.trycloudflare.com"}).twilio_ready
     assert not load_settings(**{**base, "twilio_api_key_secret": ""}).twilio_ready
+
+
+def test_text_mode_resident_gets_text_checkin_and_digit_reply():
+    from app import scripts
+    from app.classify import digits_reading
+
+    async def go():
+        e = Engine(fast(), [one(contact_mode="text", lang="es")])
+        await e.start()
+        r = e.residents[1]
+        assert await wait_for(lambda: r.status == Status.CALLING)
+        assert any("Texted check-in" in ev["msg"] for ev in e.events)
+        assert "Responda 1" in scripts.prompt_for(r)
+        say, keep = await e.respond(1, r.attempts, digits_reading("2"))
+        assert r.status == Status.NEEDS_RIDE and keep is False
+        assert any(ev["msg"].startswith("Replied") for ev in e.events)
+        assert e.snapshot()["residents"][0]["contact_mode"] == "text"
+        e.reset()
+    run(go())
+
+
+def test_text_mode_uses_twilio_send_checkin_not_place_call():
+    calls = []
+
+    class FakeTwilio:
+        def place_call(self, r, attempt):
+            calls.append("call")
+            return "CA1"
+
+        def send_checkin(self, r, attempt):
+            calls.append("text")
+            return "SM1"
+
+        def send_sms(self, to, body):
+            return "SM2"
+
+    async def go():
+        e = Engine(fast(), [one(contact_mode="text", phone="+16195550101")], twilio=FakeTwilio())
+        await e.start()
+        assert await wait_for(lambda: calls)
+        assert calls == ["text"]
+        e.reset()
+    run(go())
+
+
+def test_george_is_text_mode_in_seed():
+    g = [r for r in load_residents(fast()) if r.name == "George Patel"][0]
+    assert g.contact_mode == "text" and g.hearing
