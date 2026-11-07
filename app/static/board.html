@@ -1357,7 +1357,7 @@ body.fs .map-card { height: calc(100vh - 236px); }
       const labelLayer = (mb.getStyle().layers || []).find((l) => l.type === "symbol" && l.layout && l.layout["text-field"]);
       if (mb.getSource("composite")) {
         mb.addLayer({ id: "buildings-3d", source: "composite", "source-layer": "building", filter: ["==", ["get", "extrude"], "true"],
-          type: "fill-extrusion", minzoom: 14, paint: { "fill-extrusion-color": "#d4d4d8", "fill-extrusion-height": ["get", "height"],
+          type: "fill-extrusion", minzoom: 13, paint: { "fill-extrusion-color": "#d4d4d8", "fill-extrusion-height": ["get", "height"],
             "fill-extrusion-base": ["get", "min_height"], "fill-extrusion-opacity": 0.6 } }, labelLayer && labelLayer.id);
       }
       mb.addSource("facilities", { type: "geojson", data: { type: "FeatureCollection", features: facilities() } });
@@ -1380,8 +1380,8 @@ body.fs .map-card { height: calc(100vh - 236px); }
     return { type: "Polygon", coordinates: [[[lng - dx, lat - dy], [lng + dx, lat - dy], [lng + dx, lat + dy], [lng - dx, lat + dy], [lng - dx, lat - dy]]] };
   }
   function facilities() {
-    const f = (mapCfg.shelters || []).map((s) => ({ type: "Feature", properties: { color: isMedical(s) ? cssVar("--red") : "#f26b1d", height: isMedical(s) ? 90 : 60 }, geometry: square(s.lng, s.lat, 40) }));
-    if (mapCfg.base) f.push({ type: "Feature", properties: { color: "#2b2d33", height: 75 }, geometry: square(mapCfg.base.lng, mapCfg.base.lat, 40) });
+    const f = (mapCfg.shelters || []).map((s) => ({ type: "Feature", properties: { color: isMedical(s) ? cssVar("--red") : "#f26b1d", height: isMedical(s) ? 140 : 95 }, geometry: square(s.lng, s.lat, 60) }));
+    if (mapCfg.base) f.push({ type: "Feature", properties: { color: "#2b2d33", height: 115 }, geometry: square(mapCfg.base.lng, mapCfg.base.lat, 60) });
     return f;
   }
   let is3d = true;
@@ -1397,8 +1397,9 @@ body.fs .map-card { height: calc(100vh - 236px); }
     const ring = (mapCfg.zone && mapCfg.zone.coordinates && mapCfg.zone.coordinates[0]) || [];
     if (!mb || !ring.length) return;
     const xs = ring.map((c) => c[0]), ys = ring.map((c) => c[1]);
-    mb.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
-      { padding: 36, duration: animate ? 600 : 0, pitch: is3d ? 55 : 0, bearing: is3d ? -20 : 0 });
+    const cam = mb.cameraForBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 28 });
+    if (!cam) return;
+    mb.easeTo({ center: cam.center, zoom: cam.zoom + (is3d ? 0.6 : 0), pitch: is3d ? 55 : 0, bearing: is3d ? -20 : 0, duration: animate ? 700 : 0 });
   }
   const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
   function vehiclePos(leg, t) { return lerp(leg.a, leg.b, reduceMotion ? 1 : ((t / 6000) + (leg.seed % 7) / 7) % 1); }
