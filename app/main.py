@@ -21,7 +21,7 @@ from app.classify import classify_audio, classify_text, digits_reading
 from app.config import load_settings
 from app.engine import Engine
 from app.models import Answer, CallReading
-from app.seed import ZONE, load_residents
+from app.seed import ZONE, ZONE_CENTER, load_residents
 from app.twilio_voice import (TwilioClient, message_twiml, prompt_twiml, say_twiml, signature_ok,
                               text_ask_again)
 
@@ -142,6 +142,39 @@ async def call_resident(rid: int, request: Request):
     if not await engine.call_one(rid):
         raise HTTPException(404, f"no resident {rid}")
     return {"ok": True, "real_phone": real}
+
+
+BASE = {"name": "Alpine Fire Station (demo)", "lat": 32.8368, "lng": -116.7642}
+
+
+def _zone_polygon(points: list[tuple[float, float]], pad: float = 0.004, n: int = 32) -> dict:
+    """A padded ellipse around the zone center that covers every pin. GeoJSON Polygon, [lng, lat] order."""
+    import math
+
+    clat, clng = ZONE_CENTER
+    ry = max([abs(lat - clat) for lat, _ in points] + [0.01]) + pad
+    rx = max([abs(lng - clng) for _, lng in points] + [0.012]) + pad * 1.2
+    ring = [[round(clng + rx * math.cos(2 * math.pi * i / n), 5), round(clat + ry * math.sin(2 * math.pi * i / n), 5)]
+            for i in range(n)]
+    ring.append(ring[0])
+    return {"type": "Polygon", "coordinates": [ring]}
+
+
+@app.get("/api/map")
+async def map_config():
+    """Everything the board map needs. All places are fictional demo data. token is a public pk. token, or ""."""
+    pins = [(r.lat, r.lng) for r in engine.residents.values() if getattr(r, "lat", 0) or getattr(r, "lng", 0)]
+    pins += [(s.lat, s.lng) for s in accessibility.SHELTERS]
+    return {
+        "token": settings.mapbox_token or "",
+        "center": [ZONE_CENTER[1], ZONE_CENTER[0]],
+        "zoom": 13,
+        "zone": _zone_polygon(pins),
+        "base": BASE,
+        "shelters": [{"name": s.name, "short": s.short, "lng": s.lng, "lat": s.lat,
+                      **{c: getattr(s, c) for c in accessibility.CAPABILITIES}, "fictional": True}
+                     for s in accessibility.SHELTERS],
+    }
 
 
 @app.get("/api/accessibility")
